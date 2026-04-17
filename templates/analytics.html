@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="flex-between">
+    <h2><i class="fa-solid fa-chart-line"></i> Advanced Analytics</h2>
+    
+    <form method="GET" action="{{ url_for('analytics') }}"
+          style="display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap;
+                 background:var(--glass-bg); padding:0.5rem 0.75rem;
+                 border-radius:10px; border:1px solid var(--glass-border);">
+        <input type="date" name="date" class="form-control"
+               value="{{ report_date.strftime('%Y-%m-%d') }}"
+               style="width:auto; padding:0.4rem 0.7rem; border:none; background:transparent; min-width:130px;">
+        <button type="submit" class="btn btn-primary" style="padding:0.45rem 1rem;">Load</button>
+    </form>
+</div>
+<p style="color: var(--text-secondary); margin-bottom: 2rem;">Visualizing period-wise flow and overall monthly health charts for <strong>{{ report_date.strftime('%d/%m/%Y') }}</strong>.</p>
+
+<div class="grid grid-cols-2" style="margin-bottom: 2rem;">
+    <!-- Period-wise Graph -->
+    <div class="glass-panel">
+        <h3 style="margin-bottom: 1.2rem;"><i class="fa-solid fa-chart-bar"></i> Present by Period</h3>
+        <canvas id="periodChart" style="max-height:220px;"></canvas>
+    </div>
+    
+    <!-- Top students monthly -->
+    <div class="glass-panel">
+        <h3 style="margin-bottom: 1.2rem;"><i class="fa-solid fa-ranking-star"></i> Top Students (Monthly)</h3>
+        <canvas id="studentChart" style="max-height:220px;"></canvas>
+    </div>
+</div>
+
+<div class="glass-panel" style="margin-bottom: 2rem;">
+    <div class="flex-between" style="margin-bottom: 1rem;">
+        <h3><i class="fa-solid fa-table"></i> Comprehensive Monthly Report</h3>
+        <span class="badge" style="background: rgba(59,130,246,0.2); color: var(--accent-color); font-size: 1rem;">
+            Overall Department Average: <strong>{{ overall_monthly_percentage }}%</strong>
+        </span>
+    </div>
+    
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Student Name</th>
+                    <th>Department</th>
+                    <th>Total Monitored Periods</th>
+                    <th>Periods Attended</th>
+                    <th>Monthly Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for stat in monthly_student_stats %}
+                <tr>
+                    <td><strong>{{ stat.name }}</strong></td>
+                    <td>{{ stat.department }}</td>
+                    <td>{{ stat.total_periods }}</td>
+                    <td style="color: var(--success); font-weight: 600;">{{ stat.present_periods }}</td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div style="flex-grow: 1; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; min-width: 100px;">
+                                <div style="height: 100%; width: {{ stat.percentage }}%; background: {% if stat.percentage >= 75 %}var(--success){% elif stat.percentage >= 50 %}#f59e0b{% else %}var(--danger){% endif %};"></div>
+                            </div>
+                            <span style="font-weight: 600; font-size: 0.875rem;">{{ stat.percentage }}%</span>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" style="text-align: center; color: var(--text-secondary);">No data calculated.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    Chart.defaults.color = '#4a7c60';
+    Chart.defaults.font.family = "'Outfit', sans-serif";
+
+    // Data injected from Flask
+    const periodLabels = {{ period_labels | safe }};
+    const periodData = {{ period_data | safe }};
+    
+    const studentLabels = {{ student_labels | safe }};
+    const studentData = {{ student_data | safe }};
+
+    // Initialize Period Bar Chart
+    const ctxPeriod = document.getElementById('periodChart').getContext('2d');
+    new Chart(ctxPeriod, {
+        type: 'bar',
+        data: {
+            labels: periodLabels,
+            datasets: [{
+                label: 'Total Present',
+                data: periodData,
+                backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                borderColor: 'rgb(59, 130, 246)',
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.05)' } },
+                x: { grid: { display: false } }
+            },
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+
+    // Initialize Student Top Monthly Percentage Chart
+    const ctxStudent = document.getElementById('studentChart').getContext('2d');
+    new Chart(ctxStudent, {
+        type: 'line',
+        data: {
+            labels: studentLabels,
+            datasets: [{
+                label: 'Monthly %',
+                data: studentData,
+                backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                borderColor: 'rgb(16, 185, 129)',
+                borderWidth: 2,
+                pointBackgroundColor: 'rgb(16, 185, 129)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { beginAtZero: true, max: 100, grid: { color: 'rgba(255, 255, 255, 0.05)' } },
+                x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 45 } }
+            },
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+
+</script>
+{% endblock %}

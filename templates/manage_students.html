@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(5px);
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+.modal.open { display: flex; }
+.modal-inner {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 1.75rem;
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(22,163,74,.2);
+    border: 1px solid var(--glass-border);
+    animation: slideUp 0.25s ease;
+}
+@keyframes slideUp {
+    from { opacity:0; transform: translateY(16px); }
+    to   { opacity:1; transform: translateY(0); }
+}
+.modal-close {
+    position: absolute; right: 1.1rem; top: 1.1rem;
+    background: none; border: none; cursor: pointer;
+    font-size: 1.1rem; color: var(--text-secondary); line-height:1;
+}
+.modal-close:hover { color: var(--danger); }
+</style>
+
+<div class="glass-panel" style="margin-bottom: 2rem;">
+    <h2><i class="fa-solid fa-user-plus"></i> Add New Student</h2>
+    <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Create a student profile and login credentials.</p>
+    
+    <form method="POST" action="{{ url_for('manage_students') }}">
+        <input type="hidden" name="action" value="add">
+        <div class="grid grid-cols-2" style="gap: 1rem;">
+            <div class="form-group" style="margin-bottom:0;">
+                <label for="name">Full Name</label>
+                <input type="text" id="name" name="name" class="form-control" required placeholder="Alice Smith">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+                <label for="department">Department</label>
+                <input type="text" id="department" name="department" class="form-control" required placeholder="CSE">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+                <label for="year">Year</label>
+                <input type="number" id="year" name="year" class="form-control" required placeholder="1" min="1" max="5">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" class="form-control" required placeholder="alice_123">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" class="form-control" required placeholder="Secure Password">
+            </div>
+            <div class="form-group" style="margin-bottom:0; display:flex; align-items:flex-end;">
+                <button type="submit" class="btn btn-primary btn-block">
+                    <i class="fa-solid fa-plus"></i> Create Student
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="glass-panel">
+    <div class="flex-between">
+        <h2 style="margin: 0;"><i class="fa-solid fa-users"></i> Existing Students</h2>
+        <form method="GET" action="{{ url_for('manage_students') }}"
+              style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; margin:0;">
+            <span style="color:var(--text-secondary); font-size:0.85rem;"><i class="fa-solid fa-filter"></i> Filter:</span>
+            <select name="dept" class="form-control" style="width:auto; padding:0.4rem 2rem 0.4rem 0.75rem;" onchange="this.form.submit()">
+                <option value="All">All Depts</option>
+                {% for d in departments %}
+                <option value="{{ d }}" {% if filter_dept == d %}selected{% endif %}>{{ d }}</option>
+                {% endfor %}
+            </select>
+            <select name="year" class="form-control" style="width:auto; padding:0.4rem 2rem 0.4rem 0.75rem;" onchange="this.form.submit()">
+                <option value="All">All Years</option>
+                {% for y in years %}
+                <option value="{{ y }}" {% if filter_year|string == y|string %}selected{% endif %}>Year {{ y }}</option>
+                {% endfor %}
+            </select>
+            <a href="{{ url_for('manage_students') }}" class="btn btn-primary" style="padding:0.4rem 0.75rem;" title="Reset Filters">
+                <i class="fa-solid fa-rotate-right"></i>
+            </a>
+        </form>
+    </div>
+    
+    <div class="table-container" style="margin-top: 1.5rem;">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Username</th>
+                    <th>Department</th>
+                    <th>Year</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in students %}
+                <tr>
+                    <td>#{{ student.id }}</td>
+                    <td><strong>{{ student.name }}</strong></td>
+                    <td style="color: var(--text-secondary);">{{ student.user_account.username if student.user_account else 'N/A' }}</td>
+                    <td><span class="badge" style="background: rgba(255,255,255,0.1);">{{ student.department }}</span></td>
+                    <td>Yr {{ student.year }}</td>
+                    <td style="display: flex; gap: 0.5rem;">
+                        <button type="button" class="btn btn-primary" style="padding: 0.5rem 1rem; background-color: var(--accent-color);" title="Edit Student" onclick="openEditModal({{ student.id }}, '{{ student.name|replace("'", "\\'") }}', '{{ student.department|replace("'", "\\'") }}', {{ student.year }}, '{{ student.user_account.username if student.user_account else '' }}')">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+
+                        <form method="POST" action="{{ url_for('manage_students') }}" onsubmit="return confirm('Deleting a student deletes ALL their attendance records permanently. Proceed?');" style="margin: 0;">
+                            <input type="hidden" name="action" value="delete">
+                            <input type="hidden" name="student_id" value="{{ student.id }}">
+                            <button type="submit" class="btn btn-primary" style="background-color: var(--danger); padding: 0.5rem 1rem;" title="Delete Student">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-secondary);">No students found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Edit Student Modal -->
+<div id="editModal" class="modal" onclick="if(event.target===this) closeEditModal()">
+  <div class="modal-inner">
+    <button class="modal-close" onclick="closeEditModal()"><i class="fa-solid fa-xmark"></i></button>
+    <h3 style="margin-top:0; margin-bottom:1.4rem;"><i class="fa-solid fa-pen-to-square"></i> Edit Student</h3>
+    
+    <form method="POST" action="{{ url_for('manage_students') }}">
+        <input type="hidden" name="action" value="update">
+        <input type="hidden" id="edit_student_id" name="student_id" value="">
+        
+        <div class="form-group">
+            <label>Name</label>
+            <input type="text" id="edit_name" name="name" class="form-control" required>
+        </div>
+        
+        <div class="grid grid-cols-2" style="gap: 1rem;">
+            <div class="form-group">
+                <label>Department</label>
+                <input type="text" id="edit_department" name="department" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label>Year</label>
+                <input type="number" id="edit_year" name="year" class="form-control" required min="1">
+            </div>
+        </div>
+        
+        <hr style="border:none; border-top:1px solid #e8f5ee; margin:1rem 0;">
+        <p style="color:var(--text-secondary); margin-bottom:1rem; font-size:0.85rem;">Login Credentials</p>
+        
+        <div class="form-group">
+            <label>Username</label>
+            <input type="text" id="edit_username" name="username" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label>New Password <span style="color:var(--text-secondary); font-size:0.8em;">(leave blank to keep)</span></label>
+            <input type="password" name="password" class="form-control" placeholder="Optional">
+        </div>
+        
+        <button type="submit" class="btn btn-primary btn-block" style="margin-top:0.5rem;">
+            <i class="fa-solid fa-floppy-disk"></i> Save Changes
+        </button>
+    </form>
+  </div>
+</div>
+
+<script>
+function openEditModal(id, name, dept, year, username) {
+    document.getElementById('edit_student_id').value = id;
+    document.getElementById('edit_name').value = name;
+    document.getElementById('edit_department').value = dept;
+    document.getElementById('edit_year').value = year;
+    document.getElementById('edit_username').value = username;
+    document.getElementById('editModal').classList.add('open');
+    document.body.style.overflow = 'hidden';
+}
+function closeEditModal() {
+    document.getElementById('editModal').classList.remove('open');
+    document.body.style.overflow = '';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="glass-panel">
+    <div class="flex-between">
+        <h2><i class="fa-solid fa-calendar-days"></i> Marked Attendance Dates</h2>
+        <span class="badge" style="background: rgba(255,255,255,0.1);">{{ current_user.department }} | Yr {{ current_user.year }}</span>
+    </div>
+    
+    {% if dates %}
+        <div class="grid grid-cols-2" style="margin-top: 2rem;">
+            {% for d in dates %}
+                <a href="{{ url_for('student_attendance_view', date=d) }}" class="glass-panel date-card" style="padding: 1.5rem; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <i class="fa-solid fa-calendar-check date-icon"></i>
+                        <div>
+                            <h3 style="margin: 0; font-size: 1.25rem;">{{ d.strftime('%d/%m/%y') }}</h3>
+                            <p style="margin: 0; color: var(--text-secondary); font-size: 0.875rem;">View Details</p>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right" style="color: var(--text-secondary);"></i>
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div style="text-align: center; padding: 3rem 0; color: var(--text-secondary);">
+            <i class="fa-solid fa-folder-open" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+            <p>No attendance records have been marked for your department and year yet.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="glass-panel" style="margin-bottom: 2rem;">
+    <h2><i class="fa-solid fa-ranking-star" style="color: var(--accent-color);"></i> My Academic Grades</h2>
+    <p style="color: var(--text-secondary);">Track your performance across examinations.</p>
+</div>
+
+<div class="grid grid-cols-2" style="gap: 2rem; align-items: start;">
+    <div class="glass-panel">
+        <h3><i class="fa-solid fa-chart-line" style="color: #f59e0b;"></i> Performance Progression</h3>
+        {% if marks and marks|length > 0 %}
+        <canvas id="studentProgressionChart" height="200" style="margin-top: 1rem;"></canvas>
+        {% else %}
+        <p style="color: var(--text-secondary); text-align: center; margin: 2rem 0;">No marks recorded yet.</p>
+        {% endif %}
+    </div>
+
+    <div class="glass-panel">
+        <h3><i class="fa-solid fa-book-open-reader" style="color: #10b981;"></i> Subject Breakdown</h3>
+        <div class="table-container" style="max-height: 400px; overflow-y: auto; margin-top: 1rem;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Subject</th>
+                        <th>Exam Type</th>
+                        <th>Score</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in marks %}
+                    <tr>
+                        <td><strong>{{ m.subject }}</strong></td>
+                        <td><span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #6ee7b7;">{{ m.exam_type }}</span></td>
+                        <td>
+                            <strong style="font-size: 1.1rem; color: {% if m.marks_obtained/m.max_marks >= 0.5 %}var(--success){% else %}var(--danger){% endif %}">
+                                {{ m.marks_obtained|round }}
+                            </strong> 
+                            <span style="color: var(--text-secondary); font-size: 0.8rem;">/ {{ m.max_marks|round }}</span>
+                        </td>
+                        <td>
+                            {% if m.marks_obtained/m.max_marks >= 0.5 %}
+                            <span style="color: var(--success);"><i class="fa-solid fa-circle-check"></i> Pass</span>
+                            {% else %}
+                            <span style="color: var(--danger);"><i class="fa-solid fa-circle-xmark"></i> Fail</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: var(--text-secondary);">You have no grades logged.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if marks and marks|length > 0 %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // Raw dataset
+        const raw_marks = [
+            {% for m in marks %}
+            { subject: "{{ m.subject }}", exam: "{{ m.exam_type }}", percentage: {{ (m.marks_obtained / m.max_marks) * 100 }} },
+            {% endfor %}
+        ];
+
+        // Unique subjects and exams
+        const subjects = [...new Set(raw_marks.map(m => m.subject))];
+        const exams = [...new Set(raw_marks.map(m => m.exam))];
+
+        // Color palette for different subjects
+        const colors = [
+            'rgb(245, 158, 11)', 'rgb(16, 185, 129)', 'rgb(56, 189, 248)', 
+            'rgb(239, 68, 68)', 'rgb(139, 92, 246)', 'rgb(244, 114, 182)'
+        ];
+
+        // Build datasets
+        const datasets = subjects.map((subj, index) => {
+            const data_points = exams.map(exam_type => {
+                const record = raw_marks.find(m => m.subject === subj && m.exam === exam_type);
+                return record ? record.percentage : null; // Use null for missing data connecting lines
+            });
+            return {
+                label: subj,
+                data: data_points,
+                borderColor: colors[index % colors.length],
+                backgroundColor: colors[index % colors.length],
+                fill: false,
+                tension: 0.3,
+                borderWidth: 2,
+                pointRadius: 4,
+                spanGaps: true // Continues the line even if an exam is missed
+            };
+        });
+
+        const ctx = document.getElementById('studentProgressionChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: exams,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { 
+                        beginAtZero: true, 
+                        max: 100,
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: 'rgba(255,255,255,0.6)' }
+                    },
+                    x: {
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: 'rgba(255,255,255,0.8)' }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: 'rgba(255,255,255,0.8)' }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endif %}
+{% endblock %}

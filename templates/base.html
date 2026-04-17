@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ManageAttend | Attendance System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<nav class="navbar">
+    <a href="{{ url_for('index') }}" class="nav-brand">
+        <i class="fa-solid fa-graduation-cap"></i> ManageAttend
+    </a>
+
+    {% if current_user.is_authenticated %}
+    <!-- Hamburger (mobile only) -->
+    <button class="hamburger" id="hamburger" aria-label="Toggle menu" onclick="toggleNav()">
+        <span></span><span></span><span></span>
+    </button>
+
+    <div class="nav-links" id="navLinks">
+        {% if current_user.role == 'master_admin' %}
+            <a href="{{ url_for('manage_staff') }}"><i class="fa-solid fa-users-gear"></i> Manage Staff</a>
+            <a href="{{ url_for('admin_dashboard') }}"><i class="fa-solid fa-clipboard-user"></i> Attendance</a>
+            <a href="{{ url_for('analytics') }}"><i class="fa-solid fa-chart-pie"></i> Analytics</a>
+            <a href="{{ url_for('manage_students') }}"><i class="fa-solid fa-graduation-cap"></i> Students</a>
+            <a href="{{ url_for('manage_marks') }}"><i class="fa-solid fa-ranking-star"></i> Marks</a>
+        {% elif current_user.role == 'staff' %}
+            <a href="{{ url_for('admin_dashboard') }}"><i class="fa-solid fa-clipboard-user"></i> Attendance</a>
+            <a href="{{ url_for('analytics') }}"><i class="fa-solid fa-chart-pie"></i> Analytics</a>
+            <a href="{{ url_for('manage_students') }}"><i class="fa-solid fa-graduation-cap"></i> Students</a>
+            <a href="{{ url_for('manage_marks') }}"><i class="fa-solid fa-ranking-star"></i> Marks</a>
+        {% else %}
+            <a href="{{ url_for('student_home') }}"><i class="fa-solid fa-house"></i> Home</a>
+            <a href="{{ url_for('student_attendance_list') }}"><i class="fa-solid fa-calendar-check"></i> Attendance</a>
+            <a href="{{ url_for('student_timetable') }}"><i class="fa-solid fa-clock"></i> Timetable</a>
+            <a href="{{ url_for('student_marks') }}"><i class="fa-solid fa-ranking-star"></i> My Grades</a>
+        {% endif %}
+
+        {% if current_user.role in ['master_admin', 'staff'] %}
+        <button onclick="openProfileModal()" class="profile-btn" title="Account Settings">
+            <i class="fa-solid fa-user-gear"></i>
+        </button>
+        {% endif %}
+
+        <a href="{{ url_for('logout') }}" class="btn btn-primary" style="padding: 0.48rem 1rem;">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
+        </a>
+    </div>
+    {% endif %}
+</nav>
+
+<!-- ── CHANGE CREDENTIALS MODAL ── -->
+{% if current_user.is_authenticated and current_user.role in ['master_admin', 'staff'] %}
+<div id="profileModal"
+     onclick="if(event.target===this) closeProfileModal()"
+     style="display:none; position:fixed; inset:0; z-index:999;
+            background:rgba(0,0,0,0.35); backdrop-filter:blur(4px);
+            align-items:center; justify-content:center; padding: 1rem;">
+
+    <div style="background:#ffffff; border-radius:20px; padding:1.75rem; width:100%; max-width:420px;
+                box-shadow:0 20px 60px rgba(22,163,74,.2); border:1px solid var(--glass-border);
+                animation: slideUp 0.3s ease; position:relative; max-height:90vh; overflow-y:auto;">
+
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.4rem;">
+            <div style="display:flex; align-items:center; gap:0.7rem;">
+                <div style="width:40px; height:40px; background:var(--accent-light); border-radius:12px;
+                            display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <i class="fa-solid fa-user-gear" style="color:var(--accent-color); font-size:1.1rem;"></i>
+                </div>
+                <div>
+                    <h3 style="margin:0; font-size:1.05rem;">Account Settings</h3>
+                    <p style="margin:0; font-size:0.78rem; color:var(--text-secondary);">
+                        @{{ current_user.username }}
+                        <span style="background:var(--accent-light); color:var(--accent-color);
+                                     font-size:0.7rem; padding:0.1rem 0.45rem; border-radius:9999px;
+                                     font-weight:600; margin-left:0.3rem; text-transform:uppercase;">
+                            {{ current_user.role.replace('_', ' ') }}
+                        </span>
+                    </p>
+                </div>
+            </div>
+            <button onclick="closeProfileModal()"
+                    style="background:none; border:none; cursor:pointer; font-size:1.1rem;
+                           color:var(--text-secondary); padding:0.25rem; line-height:1;">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <form method="POST" action="{{ url_for('change_credentials') }}" id="credForm">
+            <div class="form-group">
+                <label><i class="fa-solid fa-user" style="color:var(--accent-color);"></i> New Username</label>
+                <input type="text" name="new_username" class="form-control"
+                       value="{{ current_user.username }}" placeholder="Enter new username"
+                       required autocomplete="off">
+            </div>
+
+            <hr style="border:none; border-top:1px solid #e8f5ee; margin:1.1rem 0;">
+            <p style="font-size:0.8rem; color:var(--text-secondary); margin:0 0 1rem;">
+                <i class="fa-solid fa-lock" style="color:var(--accent-color);"></i>
+                Leave password fields empty to keep current password.
+            </p>
+
+            <div class="form-group" style="position:relative;">
+                <label><i class="fa-solid fa-key" style="color:var(--accent-color);"></i> New Password</label>
+                <input type="password" id="newPwd" name="new_password" class="form-control"
+                       placeholder="New password" autocomplete="new-password">
+                <button type="button" onclick="togglePwd('newPwd','eyeNew')"
+                        style="position:absolute; right:0.75rem; bottom:0.68rem; background:none;
+                               border:none; cursor:pointer; color:var(--text-secondary);">
+                    <i id="eyeNew" class="fa-solid fa-eye"></i>
+                </button>
+            </div>
+
+            <div class="form-group" style="position:relative;">
+                <label><i class="fa-solid fa-key" style="color:var(--accent-color);"></i> Confirm Password</label>
+                <input type="password" id="confirmPwd" name="confirm_password" class="form-control"
+                       placeholder="Re-enter new password" autocomplete="new-password">
+                <button type="button" onclick="togglePwd('confirmPwd','eyeConfirm')"
+                        style="position:absolute; right:0.75rem; bottom:0.68rem; background:none;
+                               border:none; cursor:pointer; color:var(--text-secondary);">
+                    <i id="eyeConfirm" class="fa-solid fa-eye"></i>
+                </button>
+            </div>
+
+            <p id="pwdError" style="color:var(--danger); font-size:0.82rem; display:none; margin-top:-0.5rem; margin-bottom:1rem;">
+                <i class="fa-solid fa-triangle-exclamation"></i> Passwords do not match!
+            </p>
+
+            <button type="submit" class="btn btn-primary btn-block">
+                <i class="fa-solid fa-floppy-disk"></i> Save Changes
+            </button>
+        </form>
+    </div>
+</div>
+
+<style>
+    @keyframes slideUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+</style>
+{% endif %}
+
+<div class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+</div>
+
+<script>
+    /* ── Mobile nav toggle ── */
+    function toggleNav() {
+        var nav = document.getElementById('navLinks');
+        var btn = document.getElementById('hamburger');
+        nav.classList.toggle('open');
+        btn.classList.toggle('open');
+    }
+    /* Close menu when a nav link is clicked */
+    document.querySelectorAll('.nav-links a').forEach(function(link) {
+        link.addEventListener('click', function() {
+            document.getElementById('navLinks').classList.remove('open');
+            document.getElementById('hamburger').classList.remove('open');
+        });
+    });
+    /* Close nav on outside click */
+    document.addEventListener('click', function(e) {
+        var nav = document.getElementById('navLinks');
+        var btn = document.getElementById('hamburger');
+        if (nav && btn && !nav.contains(e.target) && !btn.contains(e.target)) {
+            nav.classList.remove('open');
+            btn.classList.remove('open');
+        }
+    });
+
+    /* ── Profile modal ── */
+    function openProfileModal() {
+        document.getElementById('profileModal').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        // close mobile menu if open
+        document.getElementById('navLinks').classList.remove('open');
+        document.getElementById('hamburger').classList.remove('open');
+    }
+    function closeProfileModal() {
+        document.getElementById('profileModal').style.display = 'none';
+        document.body.style.overflow = '';
+    }
+    function togglePwd(inputId, eyeId) {
+        var inp = document.getElementById(inputId);
+        var eye = document.getElementById(eyeId);
+        inp.type = inp.type === 'password' ? 'text' : 'password';
+        eye.className = inp.type === 'password' ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
+    }
+    var cf = document.getElementById('credForm');
+    if (cf) {
+        cf.addEventListener('submit', function(e) {
+            var np = document.getElementById('newPwd').value;
+            var cp = document.getElementById('confirmPwd').value;
+            var err = document.getElementById('pwdError');
+            if (np && np !== cp) { e.preventDefault(); err.style.display = 'block'; }
+            else { err.style.display = 'none'; }
+        });
+    }
+</script>
+</body>
+</html>

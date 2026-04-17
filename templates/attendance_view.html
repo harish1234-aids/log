@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="glass-panel">
+    <div class="flex-between">
+        <h2><i class="fa-solid fa-clipboard-list"></i> Personal Attendance for {{ date.strftime('%d/%m/%Y') }}</h2>
+        <div>
+            <span class="badge" style="background: rgba(255,255,255,0.1);">{{ current_user.department }}</span>
+            <span class="badge" style="background: rgba(255,255,255,0.1);">Year {{ current_user.year }}</span>
+        </div>
+    </div>
+    
+    <p style="color: var(--text-secondary); margin-bottom: 2rem;">Here is your period-by-period breakdown for this specific day.</p>
+    
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Period Number</th>
+                    <th>Your Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for att in attendances %}
+                    <tr>
+                        <td><strong>Period {{ att.period }}</strong></td>
+                        <td>
+                            {% if att.status %}
+                                <span class="badge badge-present"><i class="fa-solid fa-check"></i> Present</span>
+                            {% else %}
+                                <span class="badge badge-absent"><i class="fa-solid fa-xmark"></i> Absent</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="2" style="text-align: center; color: var(--text-secondary);">No periods have been marked for you yet today.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div style="margin-top: 1.5rem;">
+        <a href="{{ url_for('student_attendance_list') }}" class="btn btn-primary" style="background-color: var(--glass-bg); border: 1px solid var(--glass-border); box-shadow: none;">
+            <i class="fa-solid fa-arrow-left"></i> Back to Dates
+        </a>
+    </div>
+</div>
+{% endblock %}

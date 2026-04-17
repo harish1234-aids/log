@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="grid grid-cols-3">
+    <div class="glass-panel" style="grid-column: span 3;">
+        <h2>Hi, {{ current_user.student.name if current_user.student else current_user.username }}! <span style="font-size:1.5rem">👋</span></h2>
+        <p style="color: var(--text-secondary)">Welcome back to your dashboard. Department of {{ current_user.department }}, Year {{ current_user.year }}.</p>
+    </div>
+
+    {% if latest_news and latest_news|length > 0 %}
+    <div class="glass-panel" style="grid-column: span 3; border-left: 4px solid var(--accent-color); margin-bottom: 1rem;">
+        <h3><i class="fa-solid fa-bullseye" style="color: var(--accent-color);"></i> Latest Announcements</h3>
+        <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;">
+            {% for np in latest_news %}
+            <div style="background: #f0fdf4; border: 1px solid var(--glass-border); border-radius: 10px; padding: 1.25rem;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                    <h4 style="margin: 0; color: var(--text-primary); font-size: 1.1rem;">{{ np.title }}</h4>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary); background: #dcfce7; padding: 0.2rem 0.65rem; border-radius: 6px;">{{ np.timestamp.strftime('%B %d, %Y - %H:%M') }}</span>
+                </div>
+                <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
+                    <span><i class="fa-solid fa-user-tie"></i> {{ np.author.username }}</span>
+                </div>
+                <p style="margin: 0; color: var(--text-primary); line-height: 1.6; font-size: 0.95rem;">{{ np.content }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="glass-panel" style="text-align: center;">
+        <i class="fa-solid fa-chart-pie" style="font-size: 3rem; color: var(--accent-color); margin-bottom: 1rem;"></i>
+        <h3>Monthly Attendance</h3>
+        <p style="font-size: 2.5rem; font-weight: 700; color: {% if monthly_percentage >= 75 %}var(--success){% else %}var(--danger){% endif %}; margin: 1rem 0;">
+            {{ monthly_percentage }}%
+        </p>
+        <p style="color: var(--text-secondary)">Current Month</p>
+    </div>
+
+    <div class="glass-panel" style="display: flex; flex-direction: column; justify-content: center; align-items: center;">
+        <i class="fa-solid fa-calendar-check" style="font-size: 3rem; color: var(--accent-color); margin-bottom: 1rem; opacity: 0.85;"></i>
+        <h3>View Attendance</h3>
+        <a href="{{ url_for('student_attendance_list') }}" class="btn btn-primary" style="margin-top: 1rem;">View Dates <i class="fa-solid fa-arrow-right"></i></a>
+    </div>
+
+    <div class="glass-panel" style="display: flex; flex-direction: column; justify-content: center; align-items: center;">
+        <i class="fa-solid fa-clock" style="font-size: 3rem; color: #059669; margin-bottom: 1rem;"></i>
+        <h3>Timetable</h3>
+        <a href="{{ url_for('student_timetable') }}" class="btn btn-secondary" style="margin-top: 1rem;">View Grid <i class="fa-solid fa-arrow-right"></i></a>
+    </div>
+</div>
+
+<div class="glass-panel" style="margin-top: 2rem;">
+    <h3><i class="fa-solid fa-comment-dots" style="color: var(--accent-color);"></i> Send Feedback to Administration</h3>
+    <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Have questions, concerns, or requests regarding classes? Let the admins know securely.</p>
+    
+    <form method="POST" action="{{ url_for('student_home') }}">
+        <div class="form-group">
+            <textarea name="message" class="form-control" rows="4" placeholder="Write your feedback here..." required style="resize: vertical;"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">
+            <i class="fa-solid fa-paper-plane"></i> Submit Feedback
+        </button>
+    </form>
+</div>
+
+<!-- ── SHARED RESOURCES ── -->
+{% if student_files and student_files|length > 0 %}
+<div class="glass-panel" style="margin-top: 2rem;">
+    <h3 style="margin-bottom: 1.5rem;">
+        <i class="fa-solid fa-folder-open" style="color: var(--accent-color);"></i>
+        Shared Resources
+        <span style="font-size: 0.8rem; font-weight: 400; color: var(--text-secondary); margin-left: 0.5rem;">
+            — Files sent to you by staff/admin
+        </span>
+    </h3>
+
+    <div style="display: flex; flex-direction: column; gap: 0.9rem;">
+        {% for sf in student_files %}
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+                    background: #f0fdf4; border: 1px solid var(--glass-border); border-radius: 12px;
+                    padding: 1rem 1.25rem; transition: box-shadow 0.2s;"
+             onmouseover="this.style.boxShadow='0 4px 16px rgba(22,163,74,0.12)'"
+             onmouseout="this.style.boxShadow='none'">
+
+            <!-- Icon + Info -->
+            <div style="display: flex; align-items: center; gap: 1rem; flex-grow: 1; min-width: 0;">
+                <div style="width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center;
+                            justify-content: center; flex-shrink: 0;
+                            background: {% if sf.file_type == 'pdf' %}rgba(220,38,38,0.1){% else %}rgba(5,150,105,0.1){% endif %};">
+                    {% if sf.file_type == 'pdf' %}
+                        <i class="fa-solid fa-file-pdf" style="font-size:1.4rem; color:#dc2626;"></i>
+                    {% else %}
+                        <i class="fa-solid fa-file-image" style="font-size:1.4rem; color:#059669;"></i>
+                    {% endif %}
+                </div>
+                <div style="min-width: 0;">
+                    <p style="margin:0; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        {{ sf.title }}
+                    </p>
+                    <p style="margin:0; font-size:0.8rem; color:var(--text-secondary); margin-top:0.2rem;">
+                        <i class="fa-solid fa-user-tie"></i> @{{ sf.author.username }} &bull;
+                        <i class="fa-solid fa-calendar"></i> {{ sf.timestamp.strftime('%d %b %Y') }} &bull;
+                        <span style="text-transform:uppercase; letter-spacing:0.04em; font-weight:600;">
+                            {% if sf.file_type == 'pdf' %}PDF{% else %}Image{% endif %}
+                        </span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Download Button -->
+            <a href="{{ url_for('serve_upload', filename=sf.filename) }}" target="_blank"
+               class="btn btn-primary"
+               style="flex-shrink:0; padding:0.45rem 1rem; font-size:0.88rem; color:#ffffff;">
+                <i class="fa-solid fa-eye"></i> View
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+

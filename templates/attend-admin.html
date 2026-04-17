@@ -1,0 +1,413 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="glass-panel">
+    <h2><i class="fa-solid fa-clipboard-user"></i> Mark Attendance</h2>
+    <p style="color: var(--text-secondary); margin-bottom: 2rem;">Select criteria below to load students and mark their attendance.</p>
+    
+    <form method="POST" action="{{ url_for('admin_dashboard') }}" class="grid grid-cols-4" style="align-items: end; margin-bottom: 2rem;" id="loadForm">
+        <input type="hidden" name="action" value="load">
+        <div class="form-group" style="margin-bottom: 0;">
+            <label for="date">Date</label>
+            <input type="date" id="date" name="date" class="form-control" value="{{ selected_date or '' }}" required>
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 0;">
+            <label for="period">Period</label>
+            <select id="period" name="period" class="form-control" required>
+                <option value="">Select Period</option>
+                {% for p in range(1, 9) %}
+                <option value="{{ p }}" {% if selected_period == p %}selected{% endif %}>Period {{ p }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0;">
+            <label for="department">Department</label>
+            <select id="department" name="department" class="form-control" required>
+                <option value="">Select Dept</option>
+                {% for d in departments %}
+                <option value="{{ d }}" {% if selected_dept == d %}selected{% endif %}>{{ d }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0;">
+            <label for="year">Year</label>
+            <select id="year" name="year" class="form-control" required>
+                <option value="">Select Year</option>
+                {% for y in years %}
+                <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>Year {{ y }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-group" style="margin-top: 1rem; grid-column: span 4;">
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+                <i class="fa-solid fa-users"></i> Load Students
+            </button>
+        </div>
+    </form>
+
+    {% if students %}
+    <form method="POST" action="{{ url_for('admin_dashboard') }}">
+        <input type="hidden" name="action" value="submit">
+        <input type="hidden" name="date" value="{{ selected_date }}">
+        <input type="hidden" name="period" value="{{ selected_period }}">
+        <input type="hidden" name="department" value="{{ selected_dept }}">
+        <input type="hidden" name="year" value="{{ selected_year }}">
+        
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 10%;">ID</th>
+                        <th style="width: 60%;">Student Name</th>
+                        <th style="width: 30%;">Status (Present?)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for student in students %}
+                    <tr>
+                        <td style="color: var(--text-secondary);">#{{ student.id }}</td>
+                        <td>{{ student.name }}</td>
+                        <td>
+                            <label class="checkbox-wrapper">
+                                <input type="checkbox" name="attendance_{{ student.id }}" 
+                                       {% if student.id in existing_attendance and existing_attendance[student.id] %}checked{% endif %}
+                                       {% if student.id not in existing_attendance %}checked{% endif %}>
+                                <span>Present</span>
+                            </label>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end;">
+            <button type="submit" class="btn btn-primary" style="background-color: var(--success);">
+                <i class="fa-solid fa-floppy-disk"></i> Save Period {{ selected_period }}
+            </button>
+        </div>
+    </form>
+    {% elif selected_dept and selected_year %}
+        <div class="alert alert-danger" style="margin-top: 2rem;">
+            No students found for this department and year.
+        </div>
+    {% endif %}
+</div>
+
+<div class="glass-panel" style="margin-top: 2rem; overflow-x: auto;">
+    <div class="flex-between">
+        <h3 style="margin: 0;"><i class="fa-solid fa-calendar-day"></i> School Master Schedule</h3>
+        {% if current_user.role == 'master_admin' %}
+            <a href="{{ url_for('timetable_admin') }}" class="btn btn-primary" style="background-color: #8b5cf6; padding: 0.5rem 1rem;">
+                <i class="fa-solid fa-clock"></i> Config Grid Matrix
+            </a>
+        {% endif %}
+    </div>
+    
+    {% if timetable_blocks and timetable_blocks.columns %}
+    <div class="table-container" style="margin-top: 1.5rem;">
+        <table style="text-align: center; border-collapse: separate; border-spacing: 0;">
+            <thead>
+                <tr>
+                    <th style="width: 15%; background: rgba(255,255,255,0.05); color: var(--text-secondary);">Date / Day Serial</th>
+                    {% for col in timetable_blocks.columns %}
+                        {% set color = 'inherit' %}
+                        {% if col.type == 'break' %}{% set color = '#f59e0b' %}
+                        {% elif col.type == 'lunch' %}{% set color = 'var(--accent-color)' %}
+                        {% endif %}
+                        <th style="color: {{ color }};">{{ col.name }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in timetable_blocks.grid %}
+                <tr>
+                    <td style="font-weight: 600; background: rgba(255,255,255,0.02);">{{ row.day_name }}</td>
+                    {% for col_idx in range(timetable_blocks.columns|length) %}
+                        {% set col_type = timetable_blocks.columns[col_idx].type %}
+                        {% set subject = row.cells[col_idx] %}
+                        
+                        {% if col_type == 'break' or col_type == 'lunch' %}
+                            <td style="background: rgba(255,255,255,0.02);"><span style="color: var(--text-secondary); opacity: 0.5;">—</span></td>
+                        {% else %}
+                            <td style="font-weight: 600; color: var(--text-primary);">
+                                {{ subject if subject else '<span style="color: var(--text-secondary); opacity: 0.5;">Empty</span>' | safe }}
+                            </td>
+                        {% endif %}
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color: var(--text-secondary); margin-top: 1.5rem;">No timetable matrix generated yet.</p>
+    {% endif %}
+</div>
+
+<div class="glass-panel" style="margin-top: 2rem;">
+    <h3><i class="fa-solid fa-inbox" style="color: var(--accent-color);"></i> Student Feedback Inbox</h3>
+    {% if feedbacks and feedbacks|length > 0 %}
+        <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem;">
+        {% for fb in feedbacks %}
+            <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 8px; padding: 1.25rem; display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start;">
+                <div style="flex-grow: 1;">
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem;">
+                        <span style="font-weight: 600; color: var(--text-primary);"><i class="fa-solid fa-user-graduate" style="color: var(--accent-color);"></i> {{ fb.student.name if fb.student else 'Unknown Student' }}</span>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary); background: rgba(255,255,255,0.05); padding: 0.2rem 0.5rem; border-radius: 4px;">{{ fb.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>
+                    </div>
+                    <p style="color: var(--text-primary); margin: 0; line-height: 1.6; white-space: pre-wrap; font-size: 0.95rem;">{{ fb.message }}</p>
+                </div>
+                <div>
+                    <form method="POST" action="{{ url_for('delete_feedback', fb_id=fb.id) }}" style="margin: 0;" onsubmit="return confirm('Delete this feedback from the inbox?');">
+                        <button type="submit" class="btn btn-primary" style="background-color: transparent; border: 1px solid var(--danger); color: var(--danger); padding: 0.5rem 0.75rem; border-radius: 6px; transition: all 0.2s;" onmouseover="this.style.background='var(--danger)'; this.style.color='white';" onmouseout="this.style.background='transparent'; this.style.color='var(--danger)';">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        {% endfor %}
+        </div>
+    {% else %}
+        <p style="color: var(--text-secondary); margin-top: 1.5rem;">No new feedback from students in the inbox.</p>
+    {% endif %}
+</div>
+
+<!-- Announcements Publisher -->
+<div class="glass-panel" style="margin-top: 2rem;">
+    <h3><i class="fa-solid fa-bullhorn" style="color: #10b981;"></i> Broadcast Announcement</h3>
+    <form method="POST" action="{{ url_for('post_news') }}" style="margin-top: 1.5rem;">
+        <div class="form-group">
+            <label>Headline</label>
+            <input type="text" name="title" class="form-control" placeholder="E.g., Special Event Tomorrow..." required>
+        </div>
+        <div class="grid grid-cols-2" style="gap: 1rem;">
+            <div class="form-group" style="margin: 0;">
+                <label>Target Department</label>
+                <select name="target_dept" class="form-control">
+                    <option value="All">All Departments</option>
+                    {% for dept in departments %}
+                        <option value="{{ dept }}">{{ dept }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group" style="margin: 0;">
+                <label>Target Year</label>
+                <select name="target_year" class="form-control">
+                    <option value="All">All Years</option>
+                    {% for year in years %}
+                        <option value="{{ year }}">Year {{ year }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="form-group" style="margin-top: 1rem;">
+            <label>Message Content</label>
+            <textarea name="content" class="form-control" rows="3" placeholder="Write announcement details..." required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" style="background-color: #10b981; width: 100%;">
+            <i class="fa-solid fa-paper-plane"></i> Publish to Students
+        </button>
+    </form>
+</div>
+
+<!-- Active Broadcasts -->
+<div class="glass-panel" style="margin-top: 2rem;">
+    <h3><i class="fa-solid fa-newspaper" style="color: #10b981;"></i> Active Broadcasts</h3>
+    {% if news_posts and news_posts|length > 0 %}
+        <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem;">
+        {% for np in news_posts %}
+            <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-left: 4px solid #10b981; border-radius: 8px; padding: 1.25rem;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <h4 style="margin: 0; color: var(--text-primary);">{{ np.title }}</h4>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin: 0.5rem 0;">
+                            <span><i class="fa-solid fa-user-tie"></i> {{ np.author.username }}</span> &bull; 
+                            <span><i class="fa-solid fa-clock"></i> {{ np.timestamp.strftime('%Y-%m-%d %H:%M') }}</span> &bull; 
+                            <span style="color: #10b981; font-weight: 600;"><i class="fa-solid fa-bullseye"></i> Target: {{ np.target_dept }} | Year {{ np.target_year }}</span>
+                        </div>
+                        <p style="margin: 0; color: var(--text-primary); font-size: 0.95rem; line-height: 1.6;">{{ np.content }}</p>
+                    </div>
+                    {% if current_user.role == 'master_admin' or current_user.id == np.author_id %}
+                    <form method="POST" action="{{ url_for('delete_news', news_id=np.id) }}" onsubmit="return confirm('Delete this announcement globally?');">
+                        <button type="submit" class="btn btn-primary" style="background-color: transparent; border: 1px solid var(--danger); color: var(--danger); padding: 0.4rem 0.6rem;">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+        </div>
+    {% else %}
+        <p style="color: var(--text-secondary); margin-top: 1.5rem;">No active broadcasts currently running.</p>
+    {% endif %}
+</div>
+
+<!-- ── SEND FILE BROADCAST ── -->
+<div class="glass-panel" style="margin-top: 2rem;">
+    <div class="flex-between" style="margin-bottom: 0;">
+        <h3 style="margin:0;">
+            <i class="fa-solid fa-file-arrow-up" style="color: var(--accent-color);"></i>
+            Send File to Students
+        </h3>
+        <span style="font-size:0.82rem; color:var(--text-secondary);">PDF or Image • Max 16 MB</span>
+    </div>
+
+    <form method="POST" action="{{ url_for('send_file_broadcast') }}" enctype="multipart/form-data" style="margin-top: 1.5rem;">
+        <div class="form-group">
+            <label>File Title / Description</label>
+            <input type="text" name="title" class="form-control" placeholder="E.g., CSE Year 2 - Unit 3 Notes" required>
+        </div>
+
+        <div class="grid grid-cols-2" style="gap: 1rem;">
+            <div class="form-group" style="margin:0;">
+                <label>Target Department</label>
+                <select name="target_dept" class="form-control">
+                    <option value="All">All Departments</option>
+                    {% for dept in departments %}
+                        <option value="{{ dept }}">{{ dept }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label>Target Year</label>
+                <select name="target_year" class="form-control">
+                    <option value="All">All Years</option>
+                    {% for yr in years %}
+                        <option value="{{ yr }}">Year {{ yr }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 1rem;">
+            <label>Choose File (PDF or Image)</label>
+            <div style="border: 2px dashed var(--glass-border); border-radius: 12px; padding: 1.5rem; text-align: center; background: #f7fff9; transition: border-color 0.2s;"
+                 id="dropZone"
+                 ondragover="event.preventDefault(); this.style.borderColor='var(--accent-color)';"
+                 ondragleave="this.style.borderColor='var(--glass-border)';"
+                 ondrop="handleDrop(event);">
+                <i class="fa-solid fa-cloud-arrow-up" style="font-size: 2rem; color: var(--accent-color); margin-bottom: 0.5rem;"></i>
+                <p style="color: var(--text-secondary); margin: 0.5rem 0 1rem;">Drag & drop here or click to browse</p>
+                <input type="file" id="shared_file" name="shared_file"
+                       accept=".pdf,.png,.jpg,.jpeg,.gif,.webp"
+                       style="display:none;" onchange="updateFileLabel(this)">
+                <label for="shared_file" class="btn btn-secondary" style="cursor:pointer;">
+                    <i class="fa-solid fa-folder-open"></i> Browse File
+                </label>
+                <p id="fileLabel" style="margin-top: 0.75rem; font-size: 0.88rem; color: var(--accent-color); font-weight: 600;"></p>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; color: #ffffff;">
+            <i class="fa-solid fa-paper-plane"></i> Send File to Students
+        </button>
+    </form>
+</div>
+
+<!-- ── SENT FILES HISTORY ── -->
+<div class="glass-panel" style="margin-top: 2rem;">
+    <h3 style="margin-bottom:1.5rem;">
+        <i class="fa-solid fa-folder-open" style="color: var(--accent-color);"></i>
+        Sent Files History
+    </h3>
+
+    {% if shared_files and shared_files|length > 0 %}
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:5%;">#</th>
+                    <th>Title</th>
+                    <th>File</th>
+                    <th>Target</th>
+                    <th>Sent By</th>
+                    <th>Date</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for sf in shared_files %}
+            <tr>
+                <td style="color:var(--text-secondary); font-size:0.85rem;">{{ loop.index }}</td>
+                <td style="font-weight:600;">{{ sf.title }}</td>
+                <td>
+                    <a href="{{ url_for('serve_upload', filename=sf.filename) }}" target="_blank"
+                       style="display:inline-flex; align-items:center; gap:0.4rem; color:var(--accent-color); text-decoration:none; font-size:0.88rem; font-weight:500;">
+                        {% if sf.file_type == 'pdf' %}
+                            <i class="fa-solid fa-file-pdf" style="color:#dc2626;"></i>
+                        {% else %}
+                            <i class="fa-solid fa-file-image" style="color:#059669;"></i>
+                        {% endif %}
+                        {{ sf.original_name }}
+                    </a>
+                </td>
+                <td>
+                    <span class="badge badge-present" style="margin-right:0.3rem;">{{ sf.target_dept }}</span>
+                    <span class="badge" style="background:#dcfce7; color:#166534; border:1px solid #bbf7d0;">Yr {{ sf.target_year }}</span>
+                </td>
+                <td style="font-size:0.88rem; color:var(--text-secondary);">
+                    <i class="fa-solid fa-user-tie"></i> @{{ sf.author.username }}
+                </td>
+                <td style="font-size:0.82rem; color:var(--text-secondary);">
+                    {{ sf.timestamp.strftime('%d %b %Y') }}
+                </td>
+                <td>
+                    {% if current_user.role == 'master_admin' or sf.author_id == current_user.id %}
+                    <form method="POST" action="{{ url_for('delete_shared_file', file_id=sf.id) }}"
+                          onsubmit="return confirm('Delete this file permanently?');" style="margin:0;">
+                        <button type="submit" class="btn btn-danger" style="padding:0.35rem 0.6rem; font-size:0.82rem;">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </form>
+                    {% else %}
+                    <span style="color:var(--text-secondary); font-size:0.8rem;"><i class="fa-solid fa-lock"></i></span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color:var(--text-secondary); margin-top:0.5rem;">
+        <i class="fa-solid fa-inbox" style="opacity:0.4;"></i> No files have been sent yet.
+    </p>
+    {% endif %}
+</div>
+
+<script>
+    // Auto populate today's date if empty
+    document.addEventListener("DOMContentLoaded", function() {
+        var dateInput = document.getElementById("date");
+        if (!dateInput.value) {
+            var today = new Date().toISOString().split('T')[0];
+            dateInput.value = today;
+        }
+    });
+
+    function updateFileLabel(input) {
+        var label = document.getElementById('fileLabel');
+        if (input.files && input.files[0]) {
+            label.textContent = '✓ ' + input.files[0].name;
+        }
+    }
+
+    function handleDrop(event) {
+        event.preventDefault();
+        var dropZone = document.getElementById('dropZone');
+        dropZone.style.borderColor = 'var(--glass-border)';
+        var files = event.dataTransfer.files;
+        if (files.length > 0) {
+            var input = document.getElementById('shared_file');
+            input.files = files;
+            updateFileLabel(input);
+        }
+    }
+</script>
+{% endblock %}
+
