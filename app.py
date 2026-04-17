@@ -665,37 +665,48 @@ def student_marks():
 
 # ── CHANGE CREDENTIALS ──
 
+def _cred_redirect():
+    """Safe redirect back to the caller's dashboard — works on mobile where Referer header may be absent."""
+    if current_user.role == 'master_admin':
+        return url_for('manage_staff')
+    return url_for('admin_dashboard')
+
 @app.route('/change_credentials', methods=['POST'])
 @login_required
 def change_credentials():
     if current_user.role not in ['master_admin', 'staff']:
         return redirect(url_for('index'))
 
-    new_username    = request.form.get('new_username', '').strip()
-    new_password    = request.form.get('new_password', '').strip()
+    new_username     = request.form.get('new_username', '').strip()
+    new_password     = request.form.get('new_password', '').strip()
     confirm_password = request.form.get('confirm_password', '').strip()
 
     if not new_username:
         flash('Username cannot be empty.', 'danger')
-        return redirect(request.referrer or url_for('admin_dashboard'))
+        return redirect(_cred_redirect())
 
     # Check username uniqueness (ignore current user's own record)
     existing = User.query.filter_by(username=new_username).first()
     if existing and existing.id != current_user.id:
         flash('That username is already taken. Please choose another.', 'danger')
-        return redirect(request.referrer or url_for('admin_dashboard'))
+        return redirect(_cred_redirect())
 
     # Check passwords match (only if a new password was supplied)
     if new_password:
         if new_password != confirm_password:
             flash('Passwords do not match. No changes were saved.', 'danger')
-            return redirect(request.referrer or url_for('admin_dashboard'))
+            return redirect(_cred_redirect())
         current_user.set_password(new_password)
 
     current_user.username = new_username
-    db.session.commit()
-    flash('Account credentials updated successfully!', 'success')
-    return redirect(url_for('admin_dashboard'))
+    try:
+        db.session.commit()
+        flash('Account credentials updated successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'An error occurred while saving: {str(e)}', 'danger')
+
+    return redirect(_cred_redirect())
 
 
 # ── FILE BROADCAST ROUTES ──
