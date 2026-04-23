@@ -57,14 +57,11 @@
 {% if current_user.is_authenticated and current_user.role in ['master_admin', 'staff'] %}
 <div id="profileModal"
      onclick="if(event.target===this) closeProfileModal()"
-     style="display:none; position:fixed; inset:0; z-index:999;
+     style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; z-index:999;
             background:rgba(0,0,0,0.35); backdrop-filter:blur(4px);
-            align-items:center; justify-content:center; padding: 1rem;">
+            align-items:center; justify-content:center; padding: 1.25rem; overflow-y: auto;">
 
-    <div style="background:#ffffff; border-radius:20px; padding:1.75rem; width:100%; max-width:420px;
-                box-shadow:0 20px 60px rgba(22,163,74,.2); border:1px solid var(--glass-border);
-                animation: slideUp 0.3s ease; position:relative; max-height:90vh; overflow-y:auto;">
-
+    <div class="profile-modal-inner">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.4rem;">
             <div style="display:flex; align-items:center; gap:0.7rem;">
                 <div style="width:40px; height:40px; background:var(--accent-light); border-radius:12px;
@@ -109,8 +106,9 @@
                 <input type="password" id="newPwd" name="new_password" class="form-control"
                        placeholder="New password" autocomplete="new-password">
                 <button type="button" onclick="togglePwd('newPwd','eyeNew')"
-                        style="position:absolute; right:0.75rem; bottom:0.68rem; background:none;
-                               border:none; cursor:pointer; color:var(--text-secondary);">
+                        style="position:absolute; right:0.75rem; bottom:0.6rem; background:none;
+                               border:none; cursor:pointer; color:var(--text-secondary); width:32px; height:32px;
+                               display:flex; align-items:center; justify-content:center;">
                     <i id="eyeNew" class="fa-solid fa-eye"></i>
                 </button>
             </div>
@@ -120,8 +118,9 @@
                 <input type="password" id="confirmPwd" name="confirm_password" class="form-control"
                        placeholder="Re-enter new password" autocomplete="new-password">
                 <button type="button" onclick="togglePwd('confirmPwd','eyeConfirm')"
-                        style="position:absolute; right:0.75rem; bottom:0.68rem; background:none;
-                               border:none; cursor:pointer; color:var(--text-secondary);">
+                        style="position:absolute; right:0.75rem; bottom:0.6rem; background:none;
+                               border:none; cursor:pointer; color:var(--text-secondary); width:32px; height:32px;
+                               display:flex; align-items:center; justify-content:center;">
                     <i id="eyeConfirm" class="fa-solid fa-eye"></i>
                 </button>
             </div>
