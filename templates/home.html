@@ -54,6 +54,16 @@
     
     <form method="POST" action="{{ url_for('student_home') }}">
         <div class="form-group">
+            <label>Recipient</label>
+            <select name="target_staff_id" class="form-control">
+                <option value="">General (All Staff)</option>
+                {% for staff in staff_members %}
+                <option value="{{ staff.id }}">{{ staff.username }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Message</label>
             <textarea name="message" class="form-control" rows="4" placeholder="Write your feedback here..." required style="resize: vertical;"></textarea>
         </div>
         <button type="submit" class="btn btn-primary">

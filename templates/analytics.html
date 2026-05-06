@@ -115,18 +115,16 @@
     // Initialize Student Top Monthly Percentage Chart
     const ctxStudent = document.getElementById('studentChart').getContext('2d');
     new Chart(ctxStudent, {
-        type: 'line',
+        type: 'bar',
         data: {
             labels: studentLabels,
             datasets: [{
                 label: 'Monthly %',
                 data: studentData,
-                backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                backgroundColor: 'rgba(16, 185, 129, 0.7)',
                 borderColor: 'rgb(16, 185, 129)',
-                borderWidth: 2,
-                pointBackgroundColor: 'rgb(16, 185, 129)',
-                fill: true,
-                tension: 0.4
+                borderWidth: 1,
+                borderRadius: 4
             }]
         },
         options: {

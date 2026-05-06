@@ -41,6 +41,9 @@
                         <td><strong>{{ staff.username }}</strong></td>
                         <td><span class="badge" style="background: rgba(59,130,246,0.2); color: var(--accent-color);">Staff Admin</span></td>
                         <td style="display: flex; gap: 0.5rem;">
+                            <a href="{{ url_for('manage_allocations', staff_id=staff.id) }}" class="btn btn-primary" style="padding: 0.5rem 1rem; background-color: var(--success);" title="Manage Allocations">
+                                <i class="fa-solid fa-book-open"></i>
+                            </a>
                             <button type="button" class="btn btn-primary" style="padding: 0.5rem 1rem; background-color: var(--accent-color);" title="Edit Staff" onclick="openStaffModal({{ staff.id }}, '{{ staff.username|replace("'", "\\'") }}')">
                                 <i class="fa-solid fa-pen"></i>
                             </button>

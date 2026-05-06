@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="glass-panel" style="margin-bottom: 2rem;">
+    <div class="flex-between">
+        <h2><i class="fa-solid fa-book-open"></i> Manage Allocations for {{ staff.username }}</h2>
+        <a href="{{ url_for('manage_staff') }}" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i> Back to Staff
+        </a>
+    </div>
+    <p style="color: var(--text-secondary); margin-bottom: 2rem;">Assign departments, years, and subjects to this staff member.</p>
+    
+    <form method="POST" action="{{ url_for('manage_allocations', staff_id=staff.id) }}" class="grid grid-cols-4" style="align-items: end; gap: 1rem;">
+        <input type="hidden" name="action" value="add">
+        
+        <div class="form-group" style="margin: 0;">
+            <label for="department">Department</label>
+            <select id="department" name="department" class="form-control" required>
+                <option value="">Select Dept</option>
+                {% for d in departments %}
+                <option value="{{ d }}">{{ d }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group" style="margin: 0;">
+            <label for="year">Year</label>
+            <select id="year" name="year" class="form-control" required>
+                <option value="">Select Year</option>
+                {% for y in years %}
+                <option value="{{ y }}">Year {{ y }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-group" style="margin: 0;">
+            <label for="subject">Subject</label>
+            <input type="text" id="subject" name="subject" class="form-control" placeholder="E.g., Data Structures" required>
+        </div>
+        
+        <div class="form-group" style="margin: 0;">
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+                <i class="fa-solid fa-plus"></i> Allocate Subject
+            </button>
+        </div>
+    </form>
+</div>
+
+<div class="glass-panel">
+    <h2><i class="fa-solid fa-list-check"></i> Current Allocations</h2>
+    <div class="table-container" style="margin-top: 1.5rem;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Department</th>
+                    <th>Year</th>
+                    <th>Subject</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for alloc in allocations %}
+                <tr>
+                    <td><strong>{{ alloc.department }}</strong></td>
+                    <td>Year {{ alloc.year }}</td>
+                    <td><span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981;">{{ alloc.subject }}</span></td>
+                    <td>
+                        <form method="POST" action="{{ url_for('manage_allocations', staff_id=staff.id) }}" onsubmit="return confirm('Remove this allocation?');" style="margin: 0;">
+                            <input type="hidden" name="action" value="delete">
+                            <input type="hidden" name="allocation_id" value="{{ alloc.id }}">
+                            <button type="submit" class="btn btn-primary" style="background-color: var(--danger); padding: 0.5rem 1rem;">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" style="text-align: center; color: var(--text-secondary);">No allocations found for this staff member.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

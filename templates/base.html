@@ -28,6 +28,7 @@
             <a href="{{ url_for('analytics') }}"><i class="fa-solid fa-chart-pie"></i> Analytics</a>
             <a href="{{ url_for('manage_students') }}"><i class="fa-solid fa-graduation-cap"></i> Students</a>
             <a href="{{ url_for('manage_marks') }}"><i class="fa-solid fa-ranking-star"></i> Marks</a>
+            <a href="{{ url_for('timetable_admin') }}"><i class="fa-solid fa-calendar-days"></i> Timetable</a>
         {% elif current_user.role == 'staff' %}
             <a href="{{ url_for('admin_dashboard') }}"><i class="fa-solid fa-clipboard-user"></i> Attendance</a>
             <a href="{{ url_for('analytics') }}"><i class="fa-solid fa-chart-pie"></i> Analytics</a>
@@ -148,7 +149,7 @@
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-                <div class="alert alert-{{ category }}">{{ message }}</div>
+                <div class="alert alert-{{ category }}" style="white-space: pre-line;">{{ message }}</div>
             {% endfor %}
         {% endif %}
     {% endwith %}

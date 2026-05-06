@@ -27,6 +27,66 @@
     </div>
 </div>
 
+<div class="glass-panel" style="margin-bottom: 2rem;">
+    <h3><i class="fa-solid fa-file-export" style="color: #10b981;"></i> Export Marks Report</h3>
+    <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Generate an Excel report for internal marks based on filters.</p>
+    
+    <form method="GET" action="{{ url_for('export_marks') }}" class="grid grid-cols-5" style="gap: 1rem; align-items: end;">
+        <div class="form-group" style="margin: 0;">
+            <label>Department</label>
+            <select name="dept" class="form-control">
+                <option value="All">All Departments</option>
+                {% for d in departments %}
+                <option value="{{ d }}">{{ d }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-group" style="margin: 0;">
+            <label>Year</label>
+            <select name="year" class="form-control">
+                <option value="All">All Years</option>
+                {% for y in years %}
+                <option value="{{ y }}">Year {{ y }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group" style="margin: 0;">
+            <label>Student</label>
+            <select name="student_id" class="form-control">
+                <option value="All">All Students</option>
+                {% for s in students %}
+                <option value="{{ s.id }}">{{ s.name }} ({{ s.department }} - Y{{ s.year }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-group" style="margin: 0;">
+            <label>Subject</label>
+            <input type="text" name="subject" class="form-control" placeholder="All Subjects">
+        </div>
+        
+        <div class="form-group" style="margin: 0;">
+            <label>Exam Type</label>
+            <select name="exam_type" class="form-control">
+                <option value="All">All Exams</option>
+                <option value="Internal 1">Internal 1</option>
+                <option value="Internal 2">Internal 2</option>
+                <option value="Model Exam">Model Exam</option>
+                <option value="Assignment">Assignment</option>
+                <option value="Semester">Semester</option>
+            </select>
+        </div>
+        
+        <div class="form-group" style="margin-top: 1rem; grid-column: span 5;">
+            <button type="submit" class="btn btn-primary" style="background-color: #10b981; width: 100%;">
+                <i class="fa-solid fa-file-excel"></i> Download Marks Excel Report
+            </button>
+        </div>
+    </form>
+</div>
+
 <div class="grid grid-cols-3" style="align-items: start; gap: 2rem;">
     <div class="glass-panel" style="grid-column: span 1;">
         <h3><i class="fa-solid fa-plus" style="color: var(--accent-color);"></i> Upload Marks</h3>
@@ -44,7 +104,16 @@
             </div>
             <div class="form-group">
                 <label>Subject Name</label>
+                {% if current_user.role == 'staff' and staff_subjects %}
+                <select name="subject" class="form-control" required>
+                    <option value="">-- Choose Subject --</option>
+                    {% for subj in staff_subjects %}
+                    <option value="{{ subj }}">{{ subj }}</option>
+                    {% endfor %}
+                </select>
+                {% else %}
                 <input type="text" name="subject" class="form-control" placeholder="E.g. Computer Networks" required>
+                {% endif %}
             </div>
             <div class="form-group">
                 <label>Exam Type</label>

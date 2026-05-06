@@ -24,12 +24,25 @@ class User(db.Model, UserMixin):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+class StaffAllocation(db.Model):
+    __tablename__ = 'staff_allocations'
+    id = db.Column(db.Integer, primary_key=True)
+    staff_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    department = db.Column(db.String(80), nullable=False)
+    year = db.Column(db.Integer, nullable=False)
+    subject = db.Column(db.String(100), nullable=False)
+
+    staff = db.relationship('User', backref=db.backref('allocations', lazy=True, cascade='all, delete-orphan'))
+
 class Student(db.Model):
     __tablename__ = 'students'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
     department = db.Column(db.String(80), nullable=False)
     year = db.Column(db.Integer, nullable=False)
+    phone = db.Column(db.String(20), nullable=True)
+    email = db.Column(db.String(120), nullable=True)
+    gender = db.Column(db.String(20), nullable=True)
     
     attendances = db.relationship('Attendance', backref='student', lazy=True, cascade='all, delete-orphan')
 
@@ -51,6 +64,8 @@ class TimetableConfig(db.Model):
     break_after = db.Column(db.Integer, default=2)
     lunch_after = db.Column(db.Integer, default=4)
     layout_data = db.Column(db.Text, nullable=True) # store custom names JSON
+    department = db.Column(db.String(80), nullable=True)
+    year = db.Column(db.Integer, nullable=True)
 
 class Feedback(db.Model):
     __tablename__ = 'feedback'
@@ -58,8 +73,10 @@ class Feedback(db.Model):
     student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
     message = db.Column(db.Text, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.now)
+    target_staff_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     
     student = db.relationship('Student', backref=db.backref('feedbacks', lazy=True, cascade='all, delete-orphan'))
+    target_staff = db.relationship('User', foreign_keys=[target_staff_id])
 
 class News(db.Model):
     __tablename__ = 'news'

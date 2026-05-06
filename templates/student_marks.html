@@ -89,17 +89,14 @@
                 data: data_points,
                 borderColor: colors[index % colors.length],
                 backgroundColor: colors[index % colors.length],
-                fill: false,
-                tension: 0.3,
-                borderWidth: 2,
-                pointRadius: 4,
-                spanGaps: true // Continues the line even if an exam is missed
+                borderWidth: 1,
+                borderRadius: 4
             };
         });
 
         const ctx = document.getElementById('studentProgressionChart').getContext('2d');
         new Chart(ctx, {
-            type: 'line',
+            type: 'bar',
             data: {
                 labels: exams,
                 datasets: datasets

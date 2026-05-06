@@ -1,11 +1,13 @@
 import os
 import json
 import uuid
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory
+import io
+import openpyxl
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory, send_file
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from sqlalchemy import func, extract
 from datetime import datetime
-from models import db, User, Student, Attendance
+from models import db, User, Student, Attendance, InternalMark
 
 app = Flask(__name__)
 # Configurations
@@ -131,6 +133,77 @@ def manage_staff():
     staff_members = User.query.filter_by(role='staff').all()
     return render_template('manage_staff.html', staff_members=staff_members)
 
+@app.route('/manage_allocations/<int:staff_id>', methods=['GET', 'POST'])
+@login_required
+def manage_allocations(staff_id):
+    if current_user.role != 'master_admin':
+        return redirect(url_for('index'))
+        
+    staff = User.query.get_or_404(staff_id)
+    if staff.role != 'staff':
+        return redirect(url_for('manage_staff'))
+        
+    from models import StaffAllocation
+    
+    if request.method == 'POST':
+        action = request.form.get('action')
+        
+        if action == 'add':
+            dept = request.form.get('department')
+            year_val = request.form.get('year')
+            subject = request.form.get('subject')
+            
+            if dept and year_val and subject:
+                alloc = StaffAllocation(staff_id=staff.id, department=dept, year=int(year_val), subject=subject)
+                db.session.add(alloc)
+                db.session.commit()
+                flash('Subject allocated successfully!', 'success')
+                
+        elif action == 'delete':
+            alloc_id = request.form.get('allocation_id')
+            alloc = StaffAllocation.query.get(alloc_id)
+            if alloc and alloc.staff_id == staff.id:
+                db.session.delete(alloc)
+                db.session.commit()
+                flash('Allocation removed.', 'success')
+                
+        return redirect(url_for('manage_allocations', staff_id=staff.id))
+        
+    allocations = StaffAllocation.query.filter_by(staff_id=staff.id).all()
+    departments = [d[0] for d in Student.query.with_entities(Student.department).distinct().all() if d[0]]
+    years = [y[0] for y in Student.query.with_entities(Student.year).distinct().order_by(Student.year).all() if y[0]]
+    if not departments: departments = ['CSE', 'IT', 'ECE', 'MECH']
+    if not years: years = [1, 2, 3, 4]
+    
+    return render_template('manage_allocations.html', staff=staff, allocations=allocations, departments=departments, years=years)
+
+
+# --- STAFF & MASTER ADMIN ROUTES (CRUD Data) ---
+@app.route('/download_template')
+@login_required
+def download_template():
+    if current_user.role not in ['master_admin', 'staff']:
+        return redirect(url_for('index'))
+    
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Students"
+    # Header
+    headers = ["Name", "Department", "Year", "Username", "Password", "Phone", "Email", "Gender"]
+    ws.append(headers)
+    # Sample row
+    ws.append(["Sample Student", "CSE", 1, "sample_user", "password123", "1234567890", "sample@example.com", "Male"])
+    
+    out = io.BytesIO()
+    wb.save(out)
+    out.seek(0)
+    
+    return send_file(
+        out,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name='student_import_template.xlsx'
+    )
 
 # --- STAFF & MASTER ADMIN ROUTES (CRUD Data) ---
 @app.route('/manage_students', methods=['GET', 'POST'])
@@ -148,12 +221,28 @@ def manage_students():
             year = request.form.get('year')
             username = request.form.get('username')
             password = request.form.get('password')
+            phone = request.form.get('phone')
+            email = request.form.get('email')
+            gender = request.form.get('gender')
             
-            if User.query.filter_by(username=username).first():
+            # Validate all required fields
+            missing = []
+            if not name: missing.append('Name')
+            if not department: missing.append('Department')
+            if not year: missing.append('Year')
+            if not username: missing.append('Username')
+            if not password: missing.append('Password')
+            if not phone: missing.append('Phone')
+            if not email: missing.append('Email')
+            if not gender: missing.append('Gender')
+            
+            if missing:
+                flash(f'Missing required fields: {", ".join(missing)}', 'danger')
+            elif User.query.filter_by(username=username).first():
                 flash('Username already exists!', 'danger')
             else:
                 try:
-                    student = Student(name=name, department=department, year=int(year))
+                    student = Student(name=name, department=department, year=int(year), phone=phone, email=email, gender=gender)
                     db.session.add(student)
                     db.session.commit()
                     
@@ -183,6 +272,9 @@ def manage_students():
             year = request.form.get('year')
             username = request.form.get('username')
             password = request.form.get('password')
+            phone = request.form.get('phone')
+            email = request.form.get('email')
+            gender = request.form.get('gender')
 
             student = Student.query.get(student_id)
             if student:
@@ -196,6 +288,9 @@ def manage_students():
                 student.name = name
                 student.department = department
                 student.year = int(year)
+                student.phone = phone
+                student.email = email
+                student.gender = gender
                 
                 if user:
                     user.department = department
@@ -214,6 +309,105 @@ def manage_students():
 
                 flash('Student updated successfully!', 'success')
             
+        elif action == 'import_excel':
+            file = request.files.get('excel_file')
+            if not file or not file.filename.endswith('.xlsx'):
+                flash('Please upload a valid .xlsx file', 'danger')
+            else:
+                try:
+                    wb = openpyxl.load_workbook(file)
+                    ws = wb.active
+                    added_count = 0
+                    error_rows = []
+                    
+                    field_names = ['Name', 'Department', 'Year', 'Username', 'Password', 'Phone', 'Email', 'Gender']
+                    
+                    for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                        if not row or all(cell is None for cell in row):
+                            continue
+                        
+                        # Extract all fields
+                        raw_values = []
+                        for i in range(8):
+                            val = row[i] if len(row) > i and row[i] is not None else ''
+                            raw_values.append(str(val).strip() if val != '' else '')
+                        
+                        name, department, year_str, username, password, phone, email, gender = raw_values
+                        
+                        # Validate all required fields (same as manual input)
+                        missing = []
+                        if not name: missing.append('Name')
+                        if not department: missing.append('Department')
+                        if not year_str: missing.append('Year')
+                        if not username: missing.append('Username')
+                        if not password: missing.append('Password')
+                        if not phone: missing.append('Phone')
+                        if not email: missing.append('Email')
+                        if not gender: missing.append('Gender')
+                        
+                        if missing:
+                            error_rows.append(f'Row {row_num}: Missing {", ".join(missing)}')
+                            continue
+                        
+                        # Validate year is a number
+                        try:
+                            year_val = int(float(year_str))
+                        except (ValueError, TypeError):
+                            error_rows.append(f'Row {row_num}: Year must be a number')
+                            continue
+                        
+                        # Check duplicate username
+                        if User.query.filter_by(username=username).first():
+                            error_rows.append(f'Row {row_num}: Username "{username}" already exists')
+                            continue
+                            
+                        student = Student(name=name, department=department, year=year_val, phone=phone, email=email, gender=gender)
+                        db.session.add(student)
+                        db.session.flush()
+                        
+                        user = User(username=username, role='student', department=department, year=year_val, student_id=student.id)
+                        user.set_password(password)
+                        db.session.add(user)
+                        added_count += 1
+                    
+                    if error_rows:
+                        db.session.rollback()
+                        error_msg = f'Import failed! Fix these errors in your Excel file:\n'
+                        for err in error_rows:
+                            error_msg += f'• {err}\n'
+                        flash(error_msg, 'danger')
+                    else:
+                        db.session.commit()
+                        flash(f'Successfully imported {added_count} students!', 'success')
+                except Exception as e:
+                    db.session.rollback()
+                    flash(f'Error processing Excel file: {str(e)}', 'danger')
+
+        elif action == 'promote':
+            from_dept = request.form.get('from_dept')
+            from_year = request.form.get('from_year')
+            to_year = request.form.get('to_year')
+            
+            if from_dept and from_year and to_year and from_year.isdigit() and to_year.isdigit():
+                from_year_int = int(from_year)
+                to_year_int = int(to_year)
+                
+                students_to_promote = Student.query.filter_by(department=from_dept, year=from_year_int).all()
+                count = 0
+                for s in students_to_promote:
+                    s.year = to_year_int
+                    if s.user_account:
+                        s.user_account.year = to_year_int
+                    count += 1
+                
+                db.session.commit()
+                # Update attendance tags to stay visually consistent
+                Attendance.query.filter_by(department=from_dept, year=from_year_int).update({'year': to_year_int})
+                db.session.commit()
+                flash(f'Successfully promoted {count} students from {from_dept} Year {from_year_int} to Year {to_year_int}.', 'success')
+            else:
+                flash('Invalid promotion parameters.', 'danger')
+
         return redirect(url_for('manage_students'))
 
     # Retrieve Filter Arguments
@@ -245,8 +439,14 @@ def admin_dashboard():
     if current_user.role not in ['master_admin', 'staff']:
         return redirect(url_for('index'))
         
-    departments = [d[0] for d in db.session.query(Student.department).distinct().all()]
-    years = [y[0] for y in db.session.query(Student.year).distinct().all()]
+    if current_user.role == 'staff':
+        from models import StaffAllocation
+        allocs = StaffAllocation.query.filter_by(staff_id=current_user.id).all()
+        departments = list(set([a.department for a in allocs]))
+        years = list(set([a.year for a in allocs]))
+    else:
+        departments = [d[0] for d in db.session.query(Student.department).distinct().all() if d[0]]
+        years = [y[0] for y in db.session.query(Student.year).distinct().all() if y[0]]
     
     students = []
     selected_date = None
@@ -320,7 +520,9 @@ def admin_dashboard():
                     existing_attendance[record.student_id] = record.status
 
     from models import TimetableConfig, Feedback, SharedFile
-    config = TimetableConfig.query.first()
+    config = None
+    if selected_dept and selected_year:
+        config = TimetableConfig.query.filter_by(department=selected_dept, year=selected_year).first()
     timetable_blocks = []
     if config and config.layout_data:
         import json
@@ -329,13 +531,18 @@ def admin_dashboard():
         except:
             pass
             
-    feedbacks = Feedback.query.order_by(Feedback.timestamp.desc()).all()
+    from sqlalchemy import or_
+    if current_user.role == 'master_admin':
+        feedbacks = Feedback.query.order_by(Feedback.timestamp.desc()).all()
+    else:
+        feedbacks = Feedback.query.filter(or_(Feedback.target_staff_id == None, Feedback.target_staff_id == current_user.id)).order_by(Feedback.timestamp.desc()).all()
     from models import News
     news_posts = News.query.order_by(News.timestamp.desc()).all()
     shared_files = SharedFile.query.order_by(SharedFile.timestamp.desc()).all()
 
+    all_students = Student.query.order_by(Student.name).all()
     return render_template('attend-admin.html', departments=departments, years=years, 
-                           students=students, selected_date=selected_date,
+                           students=students, all_students=all_students, selected_date=selected_date,
                            selected_dept=selected_dept, selected_year=selected_year,
                            selected_period=selected_period, existing_attendance=existing_attendance,
                            timetable_blocks=timetable_blocks, feedbacks=feedbacks,
@@ -390,14 +597,26 @@ def timetable_admin():
     if current_user.role != 'master_admin':
         return redirect(url_for('index'))
         
+    departments = [d[0] for d in Student.query.with_entities(Student.department).distinct().all() if d[0]]
+    years = [y[0] for y in Student.query.with_entities(Student.year).distinct().order_by(Student.year).all() if y[0]]
+    if not departments: departments = ['CSE', 'IT', 'ECE', 'MECH']
+    if not years: years = [1, 2, 3, 4]
+    
+    selected_dept = request.args.get('dept') or request.form.get('target_dept')
+    selected_year_str = request.args.get('year') or request.form.get('target_year')
+    selected_year = int(selected_year_str) if selected_year_str and selected_year_str.isdigit() else None
+
     from models import TimetableConfig
-    config = TimetableConfig.query.first()
-    if not config:
-        config = TimetableConfig()
-        db.session.add(config)
-        db.session.commit()
-        
-    if request.method == 'POST':
+    config = None
+    
+    if selected_dept and selected_year:
+        config = TimetableConfig.query.filter_by(department=selected_dept, year=selected_year).first()
+        if not config:
+            config = TimetableConfig(department=selected_dept, year=selected_year)
+            db.session.add(config)
+            db.session.commit()
+            
+    if request.method == 'POST' and config:
         action = request.form.get('action')
         if action == 'generate':
             config.total_days = int(request.form.get('total_days') or 5)
@@ -415,7 +634,7 @@ def timetable_admin():
                 db.session.commit()
                 flash('Timetable structures updated!', 'success')
                 
-    return render_template('timetable_admin.html', config=config)
+    return render_template('timetable_admin.html', config=config, departments=departments, years=years, selected_dept=selected_dept, selected_year=selected_year)
 
 @app.route('/analytics')
 @login_required
@@ -508,8 +727,11 @@ def student_home():
     from models import Feedback, News
     if request.method == 'POST':
         message = request.form.get('message')
+        target_staff_id = request.form.get('target_staff_id')
+        if target_staff_id == '':
+            target_staff_id = None
         if message:
-            new_fb = Feedback(student_id=current_user.student_id, message=message)
+            new_fb = Feedback(student_id=current_user.student_id, message=message, target_staff_id=target_staff_id)
             db.session.add(new_fb)
             db.session.commit()
             flash('Your feedback was safely submitted to the administration!', 'success')
@@ -544,8 +766,17 @@ def student_home():
     if total_periods > 0:
         monthly_percentage = round((present_periods / total_periods) * 100, 2)
         
+    from models import StaffAllocation
+    allocs = StaffAllocation.query.filter_by(department=current_user.department, year=current_user.year).all()
+    staff_ids = list(set([a.staff_id for a in allocs]))
+    if staff_ids:
+        staff_members = User.query.filter(User.id.in_(staff_ids)).all()
+    else:
+        staff_members = []
+        
     return render_template('home.html', monthly_percentage=monthly_percentage,
-                           latest_news=latest_news, student_files=student_files)
+                           latest_news=latest_news, student_files=student_files,
+                           staff_members=staff_members)
 
 @app.route('/attendance')
 @login_required
@@ -591,7 +822,7 @@ def student_timetable():
         return redirect(url_for('index'))
         
     from models import TimetableConfig
-    config = TimetableConfig.query.first()
+    config = TimetableConfig.query.filter_by(department=current_user.department, year=current_user.year).first()
     timetable_blocks = []
     if config and config.layout_data:
         import json
@@ -653,14 +884,23 @@ def manage_marks():
            
     marks = q_marks.order_by(InternalMark.timestamp.desc()).all()
     
-    departments = [d[0] for d in Student.query.with_entities(Student.department).distinct().all() if d[0]]
-    years = [y[0] for y in Student.query.with_entities(Student.year).distinct().order_by(Student.year).all() if y[0]]
-    if not departments: departments = ['CSE', 'IT', 'ECE', 'MEECH']
-    if not years: years = [1, 2, 3, 4]
+    staff_subjects = []
+    if current_user.role == 'staff':
+        from models import StaffAllocation
+        allocs = StaffAllocation.query.filter_by(staff_id=current_user.id).all()
+        departments = list(set([a.department for a in allocs]))
+        years = list(set([a.year for a in allocs]))
+        staff_subjects = list(set([a.subject for a in allocs]))
+    else:
+        departments = [d[0] for d in Student.query.with_entities(Student.department).distinct().all() if d[0]]
+        years = [y[0] for y in Student.query.with_entities(Student.year).distinct().order_by(Student.year).all() if y[0]]
+        if not departments: departments = ['CSE', 'IT', 'ECE', 'MECH']
+        if not years: years = [1, 2, 3, 4]
     
     return render_template('manage_marks.html', students=students, marks=marks, 
                            departments=departments, years=years, 
-                           filter_dept=filter_dept, filter_year=filter_year)
+                           filter_dept=filter_dept, filter_year=filter_year,
+                           staff_subjects=staff_subjects)
 
 @app.route('/student_marks')
 @login_required
@@ -799,6 +1039,117 @@ def delete_shared_file(file_id):
 def serve_upload(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
+
+
+@app.route('/export_attendance')
+@login_required
+def export_attendance():
+    if current_user.role not in ['master_admin', 'staff']:
+        return redirect(url_for('index'))
+    
+    dept = request.args.get('dept')
+    year = request.args.get('year')
+    student_id = request.args.get('student_id')
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+    
+    query = Attendance.query.join(Student)
+    
+    if dept and dept != 'All':
+        query = query.filter(Attendance.department == dept)
+    if year and year != 'All':
+        query = query.filter(Attendance.year == int(year))
+    if student_id and student_id != 'All':
+        query = query.filter(Attendance.student_id == int(student_id))
+    if start_date_str:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        query = query.filter(Attendance.date >= start_date)
+    if end_date_str:
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        query = query.filter(Attendance.date <= end_date)
+        
+    records = query.order_by(Attendance.date.desc(), Attendance.period.asc()).all()
+    
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Attendance Report"
+    
+    headers = ["Date", "Student Name", "Roll No", "Department", "Year", "Period", "Status"]
+    ws.append(headers)
+    
+    for r in records:
+        ws.append([
+            r.date.strftime('%Y-%m-%d'),
+            r.student.name,
+            r.student_id,
+            r.department,
+            r.year,
+            r.period,
+            "Present" if r.status else "Absent"
+        ])
+    
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    filename = f"attendance_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', as_attachment=True, download_name=filename)
+
+@app.route('/export_marks')
+@login_required
+def export_marks():
+    if current_user.role not in ['master_admin', 'staff']:
+        return redirect(url_for('index'))
+    
+    dept = request.args.get('dept')
+    year = request.args.get('year')
+    student_id = request.args.get('student_id')
+    subject = request.args.get('subject')
+    exam_type = request.args.get('exam_type')
+    
+    query = InternalMark.query.join(Student)
+    
+    if dept and dept != 'All':
+        query = query.filter(Student.department == dept)
+    if year and year != 'All':
+        query = query.filter(Student.year == int(year))
+    if student_id and student_id != 'All':
+        query = query.filter(InternalMark.student_id == int(student_id))
+    if subject and subject != 'All':
+        query = query.filter(InternalMark.subject == subject)
+    if exam_type and exam_type != 'All':
+        query = query.filter(InternalMark.exam_type == exam_type)
+        
+    records = query.order_by(InternalMark.timestamp.desc()).all()
+    
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Internal Marks Report"
+    
+    headers = ["Student Name", "Roll No", "Department", "Year", "Subject", "Exam Type", "Marks Obtained", "Max Marks", "Percentage", "Date"]
+    ws.append(headers)
+    
+    for r in records:
+        percentage = (r.marks_obtained / r.max_marks * 100) if r.max_marks > 0 else 0
+        ws.append([
+            r.student.name,
+            r.student_id,
+            r.student.department,
+            r.student.year,
+            r.subject,
+            r.exam_type,
+            r.marks_obtained,
+            r.max_marks,
+            f"{percentage:.2f}%",
+            r.timestamp.strftime('%Y-%m-%d %H:%M')
+        ])
+    
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    filename = f"marks_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', as_attachment=True, download_name=filename)
 
 if __name__ == '__main__':
     with app.app_context():

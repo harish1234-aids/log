@@ -1,11 +1,43 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="glass-panel" style="margin-bottom: 2rem;">
-    <h2><i class="fa-solid fa-clock"></i> Timetable Matrix Generator</h2>
+    <h2><i class="fa-solid fa-filter"></i> Select Class</h2>
+    <form method="GET" action="{{ url_for('timetable_admin') }}" class="grid grid-cols-3" style="align-items: end; gap: 1rem;">
+        <div class="form-group" style="margin-bottom: 0;">
+            <label>Department</label>
+            <select name="dept" class="form-control" required>
+                <option value="">Select Dept</option>
+                {% for d in departments %}
+                <option value="{{ d }}" {% if selected_dept == d %}selected{% endif %}>{{ d }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+            <label>Year</label>
+            <select name="year" class="form-control" required>
+                <option value="">Select Year</option>
+                {% for y in years %}
+                <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>Year {{ y }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+                <i class="fa-solid fa-magnifying-glass"></i> Load Timetable
+            </button>
+        </div>
+    </form>
+</div>
+
+{% if selected_dept and selected_year %}
+<div class="glass-panel" style="margin-bottom: 2rem;">
+    <h2><i class="fa-solid fa-clock"></i> Timetable Matrix Generator ({{ selected_dept }} Year {{ selected_year }})</h2>
     <p style="color: var(--text-secondary); margin-bottom: 2rem;">Configure the grid parameters to generate a full Multi-Day schedule.</p>
     
     <form method="POST" action="{{ url_for('timetable_admin') }}">
         <input type="hidden" name="action" value="generate">
+        <input type="hidden" name="target_dept" value="{{ selected_dept }}">
+        <input type="hidden" name="target_year" value="{{ selected_year }}">
         <div class="grid grid-cols-5" style="align-items: end; gap: 1rem;">
             <div class="form-group" style="margin-bottom: 0;">
                 <label>Number of Days</label>
@@ -44,6 +76,8 @@
 
     <form id="saveNamesForm" method="POST" action="{{ url_for('timetable_admin') }}">
         <input type="hidden" name="action" value="save_names">
+        <input type="hidden" name="target_dept" value="{{ selected_dept }}">
+        <input type="hidden" name="target_year" value="{{ selected_year }}">
         <input type="hidden" id="layout_data_input" name="layout_data" value="">
     </form>
     
@@ -89,8 +123,9 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         
         // Setup empty grid rows
+        const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
         for(let d = 1; d <= totalDays; d++) {
-            let defaultDayName = Object.values({1:"Monday", 2:"Tuesday", 3:"Wednesday", 4:"Thursday", 5:"Friday", 6:"Saturday", 7:"Sunday"})[((d-1)%7) + 1] || "Day " + d;
+            let defaultDayName = dayNames[(d-1) % 7];
             let cells = [];
             for(let c = 0; c < layout.columns.length; c++) {
                 cells.push("");
@@ -163,4 +198,5 @@ function updateCell(rIdx, cIdx, val) {
     document.getElementById('layout_data_input').value = JSON.stringify(layout);
 }
 </script>
+{% endif %}
 {% endblock %}
