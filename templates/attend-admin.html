@@ -23,12 +23,17 @@
 
         <div class="form-group" style="margin-bottom: 0;">
             <label for="department">Department</label>
-            <select id="department" name="department" class="form-control" required>
-                <option value="">Select Dept</option>
-                {% for d in departments %}
-                <option value="{{ d }}" {% if selected_dept == d %}selected{% endif %}>{{ d }}</option>
-                {% endfor %}
-            </select>
+            {% if current_user.department %}
+                <input type="text" class="form-control" value="{{ current_user.department }}" readonly>
+                <input type="hidden" name="department" value="{{ current_user.department }}">
+            {% else %}
+                <select id="department" name="department" class="form-control" required>
+                    <option value="">Select Dept</option>
+                    {% for d in departments %}
+                    <option value="{{ d }}" {% if selected_dept == d %}selected{% endif %}>{{ d }}</option>
+                    {% endfor %}
+                </select>
+            {% endif %}
         </div>
 
         <div class="form-group" style="margin-bottom: 0;">
@@ -71,12 +76,24 @@
                         <td style="color: var(--text-secondary);">#{{ student.id }}</td>
                         <td>{{ student.name }}</td>
                         <td>
+                            {% if current_user.role != 'principal' %}
                             <label class="checkbox-wrapper">
                                 <input type="checkbox" name="attendance_{{ student.id }}" 
                                        {% if student.id in existing_attendance and existing_attendance[student.id] %}checked{% endif %}
                                        {% if student.id not in existing_attendance %}checked{% endif %}>
                                 <span>Present</span>
                             </label>
+                            {% else %}
+                                {% if student.id in existing_attendance %}
+                                    {% if existing_attendance[student.id] %}
+                                        <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: var(--success);"><i class="fa-solid fa-check"></i> Present</span>
+                                    {% else %}
+                                        <span class="badge" style="background: rgba(239, 68, 68, 0.2); color: var(--danger);"><i class="fa-solid fa-xmark"></i> Absent</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span style="color: var(--text-secondary); font-style: italic;">Not Marked</span>
+                                {% endif %}
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -84,11 +101,13 @@
             </table>
         </div>
         
+        {% if current_user.role != 'principal' %}
         <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end;">
             <button type="submit" class="btn btn-primary" style="background-color: var(--success);">
                 <i class="fa-solid fa-floppy-disk"></i> Save Period {{ selected_period }}
             </button>
         </div>
+        {% endif %}
     </form>
     {% elif selected_dept and selected_year %}
         <div class="alert alert-danger" style="margin-top: 2rem;">
@@ -153,7 +172,7 @@
 <div class="glass-panel" style="margin-top: 2rem; overflow-x: auto;">
     <div class="flex-between">
         <h3 style="margin: 0;"><i class="fa-solid fa-calendar-day"></i> Timetable {% if selected_dept and selected_year %}({{ selected_dept }} Year {{ selected_year }}){% else %}(Select Class Above){% endif %}</h3>
-        {% if current_user.role == 'master_admin' %}
+        {% if current_user.role in ['principal', 'hod'] %}
             <a href="{{ url_for('timetable_admin') }}" class="btn btn-primary" style="background-color: #8b5cf6; padding: 0.5rem 1rem;">
                 <i class="fa-solid fa-clock"></i> Config Grid Matrix
             </a>
@@ -245,12 +264,17 @@
         <div class="grid grid-cols-2" style="gap: 1rem;">
             <div class="form-group" style="margin: 0;">
                 <label>Target Department</label>
-                <select name="target_dept" class="form-control">
-                    <option value="All">All Departments</option>
-                    {% for dept in departments %}
-                        <option value="{{ dept }}">{{ dept }}</option>
-                    {% endfor %}
-                </select>
+                {% if current_user.department %}
+                    <input type="text" class="form-control" value="{{ current_user.department }}" readonly>
+                    <input type="hidden" name="target_dept" value="{{ current_user.department }}">
+                {% else %}
+                    <select name="target_dept" class="form-control">
+                        <option value="All">All Departments</option>
+                        {% for dept in departments %}
+                            <option value="{{ dept }}">{{ dept }}</option>
+                        {% endfor %}
+                    </select>
+                {% endif %}
             </div>
             <div class="form-group" style="margin: 0;">
                 <label>Target Year</label>
@@ -261,6 +285,17 @@
                     {% endfor %}
                 </select>
             </div>
+            {% if current_user.role == 'principal' %}
+            <div class="form-group" style="margin: 0; grid-column: span 2;">
+                <label>Target Audience (Optional Role Restriction)</label>
+                <select name="target_role" class="form-control">
+                    <option value="All">All (Students & Staff)</option>
+                    <option value="hod">HODs Only</option>
+                    <option value="staff">Staff Only</option>
+                    <option value="student">Students Only</option>
+                </select>
+            </div>
+            {% endif %}
         </div>
         <div class="form-group" style="margin-top: 1rem;">
             <label>Message Content</label>
@@ -289,7 +324,7 @@
                         </div>
                         <p style="margin: 0; color: var(--text-primary); font-size: 0.95rem; line-height: 1.6;">{{ np.content }}</p>
                     </div>
-                    {% if current_user.role == 'master_admin' or current_user.id == np.author_id %}
+                    {% if current_user.role == 'principal' or current_user.id == np.author_id %}
                     <form method="POST" action="{{ url_for('delete_news', news_id=np.id) }}" onsubmit="return confirm('Delete this announcement globally?');">
                         <button type="submit" class="btn btn-primary" style="background-color: transparent; border: 1px solid var(--danger); color: var(--danger); padding: 0.4rem 0.6rem;">
                             <i class="fa-solid fa-trash"></i>
@@ -324,12 +359,17 @@
         <div class="grid grid-cols-2" style="gap: 1rem;">
             <div class="form-group" style="margin:0;">
                 <label>Target Department</label>
-                <select name="target_dept" class="form-control">
-                    <option value="All">All Departments</option>
-                    {% for dept in departments %}
-                        <option value="{{ dept }}">{{ dept }}</option>
-                    {% endfor %}
-                </select>
+                {% if current_user.department %}
+                    <input type="text" class="form-control" value="{{ current_user.department }}" readonly>
+                    <input type="hidden" name="target_dept" value="{{ current_user.department }}">
+                {% else %}
+                    <select name="target_dept" class="form-control">
+                        <option value="All">All Departments</option>
+                        {% for dept in departments %}
+                            <option value="{{ dept }}">{{ dept }}</option>
+                        {% endfor %}
+                    </select>
+                {% endif %}
             </div>
             <div class="form-group" style="margin:0;">
                 <label>Target Year</label>
@@ -415,7 +455,7 @@
                     {{ sf.timestamp.strftime('%d %b %Y') }}
                 </td>
                 <td>
-                    {% if current_user.role == 'master_admin' or sf.author_id == current_user.id %}
+                    {% if current_user.role == 'principal' or sf.author_id == current_user.id %}
                     <form method="POST" action="{{ url_for('delete_shared_file', file_id=sf.id) }}"
                           onsubmit="return confirm('Delete this file permanently?');" style="margin:0;">
                         <button type="submit" class="btn btn-danger" style="padding:0.35rem 0.6rem; font-size:0.82rem;">

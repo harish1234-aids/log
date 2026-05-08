@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
+{% if current_user.role != 'principal' %}
 <div class="glass-panel" style="margin-bottom: 2rem;">
     <div class="flex-between">
         <h2><i class="fa-solid fa-book-open"></i> Manage Allocations for {{ staff.username }}</h2>
@@ -44,6 +45,16 @@
         </div>
     </form>
 </div>
+{% else %}
+<div class="glass-panel" style="margin-bottom: 2rem;">
+    <div class="flex-between">
+        <h2><i class="fa-solid fa-book-open"></i> View Allocations for {{ staff.username }}</h2>
+        <a href="{{ url_for('manage_staff') }}" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i> Back to Staff
+        </a>
+    </div>
+</div>
+{% endif %}
 
 <div class="glass-panel">
     <h2><i class="fa-solid fa-list-check"></i> Current Allocations</h2>
@@ -64,6 +75,7 @@
                     <td>Year {{ alloc.year }}</td>
                     <td><span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981;">{{ alloc.subject }}</span></td>
                     <td>
+                        {% if current_user.role != 'principal' %}
                         <form method="POST" action="{{ url_for('manage_allocations', staff_id=staff.id) }}" onsubmit="return confirm('Remove this allocation?');" style="margin: 0;">
                             <input type="hidden" name="action" value="delete">
                             <input type="hidden" name="allocation_id" value="{{ alloc.id }}">
@@ -71,6 +83,9 @@
                                 <i class="fa-solid fa-trash"></i>
                             </button>
                         </form>
+                        {% else %}
+                        <span style="color: var(--text-secondary); font-size: 0.8rem;"><i class="fa-solid fa-lock"></i> Read-only</span>
+                        {% endif %}
                     </td>
                 </tr>
                 {% else %}

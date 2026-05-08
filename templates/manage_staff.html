@@ -1,28 +1,62 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="grid grid-cols-2" style="gap: 2rem; align-items: flex-start;">
+<div class="grid {% if current_user.role != 'principal' %}grid-cols-2{% else %}grid-cols-1{% endif %}" style="gap: 2rem; align-items: flex-start;">
     
-    <div class="glass-panel">
-        <h2><i class="fa-solid fa-user-plus"></i> Add Staff Admin</h2>
-        <p style="color: var(--text-secondary); margin-bottom: 2rem;">Create a new staff admin who can manage attendance and students.</p>
-        
-        <form method="POST" action="{{ url_for('manage_staff') }}">
-            <input type="hidden" name="action" value="add">
+    {% if current_user.role != 'principal' %}
+    <div style="display: flex; flex-direction: column; gap: 2rem;">
+        <div class="glass-panel">
+            <h2><i class="fa-solid fa-user-plus"></i> Add Staff Member</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">Create a new staff account for teaching or administration.</p>
             
-            <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" name="username" class="form-control" required placeholder="staff_john">
-            </div>
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" class="form-control" required placeholder="Secure Password">
-            </div>
+            <form method="POST" action="{{ url_for('manage_staff') }}">
+                <input type="hidden" name="action" value="add">
+                
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" class="form-control" required placeholder="staff_john">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" class="form-control" required placeholder="Secure Password">
+                </div>
 
-            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
-                <i class="fa-solid fa-plus"></i> Create Staff Account
-            </button>
-        </form>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+                    <i class="fa-solid fa-plus"></i> Create Staff Account
+                </button>
+            </form>
+        </div>
+
+        <div class="glass-panel" style="border-top: 4px solid var(--accent-color);">
+            <h3><i class="fa-solid fa-file-excel" style="color: #10b981;"></i> Bulk Staff Import</h3>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">
+                Upload Excel (.xlsx) with columns: <strong>Username, Password</strong>
+            </p>
+            <form method="POST" action="{{ url_for('manage_staff') }}" enctype="multipart/form-data">
+                <input type="hidden" name="action" value="import_staff">
+                
+                {% if current_user.role == 'principal' %}
+                <div class="form-group">
+                    <label>Target Department</label>
+                    <select name="department" class="form-control" required>
+                        <option value="CSE">CSE</option>
+                        <option value="IT">IT</option>
+                        <option value="ECE">ECE</option>
+                        <option value="MECH">MECH</option>
+                        <option value="CIVIL">CIVIL</option>
+                    </select>
+                </div>
+                {% endif %}
+
+                <div class="form-group">
+                    <input type="file" name="excel_file" class="form-control" accept=".xlsx" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; background-color: #10b981;">
+                    <i class="fa-solid fa-upload"></i> Import Staff from Excel
+                </button>
+            </form>
+        </div>
     </div>
+    {% endif %}
 
     <div class="glass-panel">
         <h2><i class="fa-solid fa-users-gear"></i> Existing Staff</h2>
@@ -39,11 +73,12 @@
                     {% for staff in staff_members %}
                     <tr>
                         <td><strong>{{ staff.username }}</strong></td>
-                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color: var(--accent-color);">Staff Admin</span></td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.2); color: var(--accent-color);">Staff</span></td>
                         <td style="display: flex; gap: 0.5rem;">
                             <a href="{{ url_for('manage_allocations', staff_id=staff.id) }}" class="btn btn-primary" style="padding: 0.5rem 1rem; background-color: var(--success);" title="Manage Allocations">
                                 <i class="fa-solid fa-book-open"></i>
                             </a>
+                            {% if current_user.role != 'principal' %}
                             <button type="button" class="btn btn-primary" style="padding: 0.5rem 1rem; background-color: var(--accent-color);" title="Edit Staff" onclick="openStaffModal({{ staff.id }}, '{{ staff.username|replace("'", "\\'") }}')">
                                 <i class="fa-solid fa-pen"></i>
                             </button>
@@ -54,6 +89,7 @@
                                     <i class="fa-solid fa-trash"></i>
                                 </button>
                             </form>
+                            {% endif %}
                         </td>
                     </tr>
                     {% else %}

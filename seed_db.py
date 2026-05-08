@@ -9,10 +9,19 @@ def seed():
         db.drop_all()
         db.create_all()
 
-        # Create Master Admin
-        master = User(username='admin', role='master_admin')
-        master.set_password('admin')
-        db.session.add(master)
+        # Create Principal Admin
+        principal = User(username='principal', role='principal')
+        principal.set_password('principal123')
+        db.session.add(principal)
+
+        # Create HODs
+        hod_cse = User(username='hod_cse', role='hod', department='Computer Science')
+        hod_cse.set_password('hod123')
+        db.session.add(hod_cse)
+
+        hod_it = User(username='hod_it', role='hod', department='Information Technology')
+        hod_it.set_password('hod123')
+        db.session.add(hod_it)
 
         # Create a Staff Admin
         staff = User(username='staff1', role='staff')
@@ -55,7 +64,7 @@ def seed():
                     db.session.add(att)
 
         db.session.commit()
-        print("Database seeded! Master Admin: admin/admin. Staff: staff1/password. Students: alice/password, etc.")
+        print("Database seeded! Principal: principal/principal123. HODs: hod_cse/hod123. Staff: staff1/password.")
 
 if __name__ == '__main__':
     seed()

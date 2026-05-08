@@ -5,12 +5,17 @@
     <form method="GET" action="{{ url_for('timetable_admin') }}" class="grid grid-cols-3" style="align-items: end; gap: 1rem;">
         <div class="form-group" style="margin-bottom: 0;">
             <label>Department</label>
-            <select name="dept" class="form-control" required>
-                <option value="">Select Dept</option>
-                {% for d in departments %}
-                <option value="{{ d }}" {% if selected_dept == d %}selected{% endif %}>{{ d }}</option>
-                {% endfor %}
-            </select>
+            {% if current_user.department %}
+                <input type="text" class="form-control" value="{{ current_user.department }}" readonly>
+                <input type="hidden" name="dept" value="{{ current_user.department }}">
+            {% else %}
+                <select name="dept" class="form-control" required>
+                    <option value="">Select Dept</option>
+                    {% for d in departments %}
+                    <option value="{{ d }}" {% if selected_dept == d %}selected{% endif %}>{{ d }}</option>
+                    {% endfor %}
+                </select>
+            {% endif %}
         </div>
         <div class="form-group" style="margin-bottom: 0;">
             <label>Year</label>
@@ -30,47 +35,66 @@
 </div>
 
 {% if selected_dept and selected_year %}
-<div class="glass-panel" style="margin-bottom: 2rem;">
-    <h2><i class="fa-solid fa-clock"></i> Timetable Matrix Generator ({{ selected_dept }} Year {{ selected_year }})</h2>
-    <p style="color: var(--text-secondary); margin-bottom: 2rem;">Configure the grid parameters to generate a full Multi-Day schedule.</p>
-    
-    <form method="POST" action="{{ url_for('timetable_admin') }}">
-        <input type="hidden" name="action" value="generate">
-        <input type="hidden" name="target_dept" value="{{ selected_dept }}">
-        <input type="hidden" name="target_year" value="{{ selected_year }}">
-        <div class="grid grid-cols-5" style="align-items: end; gap: 1rem;">
-            <div class="form-group" style="margin-bottom: 0;">
-                <label>Number of Days</label>
-                <input type="number" name="total_days" class="form-control" value="{{ config.total_days or 5 }}" min="1">
+<div class="grid grid-cols-2" style="gap: 2rem; margin-bottom: 2rem;">
+    <div class="glass-panel">
+        <h2><i class="fa-solid fa-clock"></i> Timetable Matrix Generator</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 2rem;">Configure the grid parameters to generate a full Multi-Day schedule.</p>
+        
+        <form method="POST" action="{{ url_for('timetable_admin') }}">
+            <input type="hidden" name="action" value="generate">
+            <input type="hidden" name="target_dept" value="{{ selected_dept }}">
+            <input type="hidden" name="target_year" value="{{ selected_year }}">
+            <div class="grid grid-cols-2" style="gap: 1rem;">
+                <div class="form-group">
+                    <label>Number of Days</label>
+                    <input type="number" name="total_days" class="form-control" value="{{ config.total_days or 5 }}" min="1">
+                </div>
+                <div class="form-group">
+                    <label>Total Periods</label>
+                    <input type="number" name="total_periods" class="form-control" value="{{ config.total_periods }}" min="1">
+                </div>
+                <div class="form-group">
+                    <label>Break After #</label>
+                    <input type="number" name="break_after" class="form-control" value="{{ config.break_after }}" min="1">
+                </div>
+                <div class="form-group">
+                    <label>Lunch After #</label>
+                    <input type="number" name="lunch_after" class="form-control" value="{{ config.lunch_after }}" min="1">
+                </div>
             </div>
-            <div class="form-group" style="margin-bottom: 0;">
-                <label>Total Academic Periods</label>
-                <input type="number" name="total_periods" class="form-control" value="{{ config.total_periods }}" min="1">
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Initialize Timetable Grid
+            </button>
+        </form>
+    </div>
+
+    <div class="glass-panel" style="border-top: 4px solid #10b981;">
+        <h2><i class="fa-solid fa-file-excel" style="color: #10b981;"></i> Bulk Timetable Import</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">
+            Upload Excel with columns:<br>
+            <strong>Dept, Year, Day, P1, P2, P3, P4, P5, P6, P7, P8</strong>
+        </p>
+        <form method="POST" action="{{ url_for('timetable_admin') }}" enctype="multipart/form-data">
+            <input type="hidden" name="action" value="import_timetable">
+            <div class="form-group">
+                <input type="file" name="excel_file" class="form-control" accept=".xlsx" required>
             </div>
-            <div class="form-group" style="margin-bottom: 0;">
-                <label>Break After Period #</label>
-                <input type="number" name="break_after" class="form-control" value="{{ config.break_after }}" min="1">
-            </div>
-            <div class="form-group" style="margin-bottom: 0;">
-                <label>Lunch After Period #</label>
-                <input type="number" name="lunch_after" class="form-control" value="{{ config.lunch_after }}" min="1">
-            </div>
-            <div class="form-group" style="margin-bottom: 0;">
-                <button type="submit" class="btn btn-primary" style="width: 100%;">
-                    <i class="fa-solid fa-table"></i> Generate Grid
-                </button>
-            </div>
-        </div>
-    </form>
+            <button type="submit" class="btn btn-primary" style="width: 100%; background-color: #10b981;">
+                <i class="fa-solid fa-upload"></i> Import Timetable from Excel
+            </button>
+        </form>
+    </div>
 </div>
 
 <!-- Layout Editor Matrix-->
 <div class="glass-panel" id="layoutPreviewPanel" style="display: none; overflow-x: auto;">
     <div class="flex-between">
         <h3><i class="fa-solid fa-layer-group"></i> Master Schedule Editor</h3>
+        {% if current_user.role != 'principal' %}
         <button type="button" class="btn btn-primary" style="background-color: var(--success);" onclick="document.getElementById('saveNamesForm').submit()">
             <i class="fa-solid fa-floppy-disk"></i> Save Timetable Matrix
         </button>
+        {% endif %}
     </div>
     <p style="color: var(--text-secondary); margin-top: -1rem; margin-bottom: 1.5rem; font-size: 0.875rem;">Modify the <strong>Day Names</strong> and fill in the <strong>Subjects</strong> in the empty cells. Empty boxes default to "—".</p>
 
@@ -94,6 +118,8 @@
 </div>
 
 <script>
+const isPrincipal = {{ 'true' if current_user.role == 'principal' else 'false' }};
+
 document.addEventListener("DOMContentLoaded", function() {
     const totalDays = {{ config.total_days|default(5) }};
     const totalPeriods = {{ config.total_periods|default(6) }};
@@ -147,7 +173,7 @@ document.addEventListener("DOMContentLoaded", function() {
             if(col.type === 'lunch') color = 'var(--accent-color)';
             trHead.innerHTML += `
                <th style="color: ${color}; text-align: center;">
-                 <input type="text" value="${col.name}" class="form-control" style="background:transparent; border:none; text-align:center; padding:0; font-weight:bold; color:inherit; width: 100px;" onchange="updateColumn(${cIdx}, this.value)">
+                 <input type="text" value="${col.name}" class="form-control" style="background:transparent; border:none; text-align:center; padding:0; font-weight:bold; color:inherit; width: 100px;" onchange="updateColumn(${cIdx}, this.value)" ${isPrincipal ? 'disabled' : ''}>
                </th>`;
         });
         thead.appendChild(trHead);
@@ -157,17 +183,19 @@ document.addEventListener("DOMContentLoaded", function() {
         layout.grid.forEach((row, rIdx) => {
             let trHtml = `
                 <td style="background: rgba(255,255,255,0.02); font-weight: 600;">
-                   <input type="text" value="${row.day_name}" class="form-control" style="background:transparent; border:none; font-weight:bold; color:var(--text-primary); padding:0; width: 100%;" onchange="updateRowName(${rIdx}, this.value)">
+                   <input type="text" value="${row.day_name}" class="form-control" style="background:transparent; border:none; font-weight:bold; color:var(--text-primary); padding:0; width: 100%;" onchange="updateRowName(${rIdx}, this.value)" ${isPrincipal ? 'disabled' : ''}>
                 </td>`;
             
             layout.columns.forEach((col, cIdx) => {
                 let cellVal = row.cells[cIdx] || "";
                 if (col.type !== 'academic') {
-                    // Span or disabled look for break/lunch cells
-                    trHtml += `<td style="background: rgba(255,255,255,0.02);"><span style="color: var(--text-secondary); opacity: 0.5;">—</span></td>`;
+                    // Distinct background for breaks/lunch
+                    let bg = col.type === 'break' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(139, 92, 246, 0.1)';
+                    let label = col.type === 'break' ? 'BREAK' : 'LUNCH';
+                    trHtml += `<td style="background: ${bg}; font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); vertical-align: middle;">${label}</td>`;
                 } else {
                     trHtml += `<td>
-                       <input type="text" value="${cellVal}" class="form-control" placeholder="Subject..." style="width: 100%; border: 1px solid var(--glass-border);" onchange="updateCell(${rIdx}, ${cIdx}, this.value)">
+                       <input type="text" value="${cellVal}" class="form-control" placeholder="Subject..." style="width: 100%; border: 1px solid var(--glass-border);" onchange="updateCell(${rIdx}, ${cIdx}, this.value)" ${isPrincipal ? 'disabled' : ''}>
                     </td>`;
                 }
             });

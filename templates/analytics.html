@@ -1,143 +1,265 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="flex-between">
-    <h2><i class="fa-solid fa-chart-line"></i> Advanced Analytics</h2>
-    
-    <form method="GET" action="{{ url_for('analytics') }}"
-          style="display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap;
-                 background:var(--glass-bg); padding:0.5rem 0.75rem;
-                 border-radius:10px; border:1px solid var(--glass-border);">
-        <input type="date" name="date" class="form-control"
-               value="{{ report_date.strftime('%Y-%m-%d') }}"
-               style="width:auto; padding:0.4rem 0.7rem; border:none; background:transparent; min-width:130px;">
-        <button type="submit" class="btn btn-primary" style="padding:0.45rem 1rem;">Load</button>
-    </form>
-</div>
-<p style="color: var(--text-secondary); margin-bottom: 2rem;">Visualizing period-wise flow and overall monthly health charts for <strong>{{ report_date.strftime('%d/%m/%Y') }}</strong>.</p>
-
-<div class="grid grid-cols-2" style="margin-bottom: 2rem;">
-    <!-- Period-wise Graph -->
-    <div class="glass-panel">
-        <h3 style="margin-bottom: 1.2rem;"><i class="fa-solid fa-chart-bar"></i> Present by Period</h3>
-        <canvas id="periodChart" style="max-height:220px;"></canvas>
-    </div>
-    
-    <!-- Top students monthly -->
-    <div class="glass-panel">
-        <h3 style="margin-bottom: 1.2rem;"><i class="fa-solid fa-ranking-star"></i> Top Students (Monthly)</h3>
-        <canvas id="studentChart" style="max-height:220px;"></canvas>
-    </div>
-</div>
-
 <div class="glass-panel" style="margin-bottom: 2rem;">
-    <div class="flex-between" style="margin-bottom: 1rem;">
-        <h3><i class="fa-solid fa-table"></i> Comprehensive Monthly Report</h3>
-        <span class="badge" style="background: rgba(59,130,246,0.2); color: var(--accent-color); font-size: 1rem;">
-            Overall Department Average: <strong>{{ overall_monthly_percentage }}%</strong>
-        </span>
+    <div class="flex-between">
+        <h2><i class="fa-solid fa-chart-line"></i> Advanced Institution Analytics</h2>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <button id="backBtn" class="btn btn-secondary" style="display: none;" onclick="goBack()">
+                <i class="fa-solid fa-arrow-left"></i> Back
+            </button>
+            <button class="btn btn-primary" onclick="loadLevel(1)">
+                <i class="fa-solid fa-rotate-right"></i> Reset
+            </button>
+        </div>
     </div>
-    
-    <div class="table-container">
-        <table>
-            <thead>
-                <tr>
-                    <th>Student Name</th>
-                    <th>Department</th>
-                    <th>Total Monitored Periods</th>
-                    <th>Periods Attended</th>
-                    <th>Monthly Score</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for stat in monthly_student_stats %}
-                <tr>
-                    <td><strong>{{ stat.name }}</strong></td>
-                    <td>{{ stat.department }}</td>
-                    <td>{{ stat.total_periods }}</td>
-                    <td style="color: var(--success); font-weight: 600;">{{ stat.present_periods }}</td>
-                    <td>
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <div style="flex-grow: 1; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; min-width: 100px;">
-                                <div style="height: 100%; width: {{ stat.percentage }}%; background: {% if stat.percentage >= 75 %}var(--success){% elif stat.percentage >= 50 %}#f59e0b{% else %}var(--danger){% endif %};"></div>
-                            </div>
-                            <span style="font-weight: 600; font-size: 0.875rem;">{{ stat.percentage }}%</span>
-                        </div>
-                    </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="5" style="text-align: center; color: var(--text-secondary);">No data calculated.</td>
-                </tr>
+    <p id="breadCrumbs" style="color: var(--text-secondary); margin-top: 0.5rem; font-weight: 500;">Institution Overview</p>
+</div>
+
+<div id="filterPanel" class="glass-panel" style="margin-bottom: 2rem;">
+    <div class="grid grid-cols-2" style="gap: 1.5rem; align-items: center;">
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <i class="fa-solid fa-magnifying-glass" style="color: var(--accent-color);"></i>
+            <input type="text" id="studentSearch" class="form-control" placeholder="Search for a student..." oninput="debounceSearch()">
+        </div>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <i class="fa-solid fa-filter" style="color: #f59e0b;"></i>
+            <select id="examFilter" class="form-control" onchange="loadLevel(currentLevel)">
+                <option value="All">All Exams (Average)</option>
+                <option value="Internal 1">Internal 1</option>
+                <option value="Internal 2">Internal 2</option>
+                <option value="Model Exam">Model Exam</option>
+                <option value="Assignment">Assignment</option>
+                <option value="Semester">Semester</option>
+            </select>
+        </div>
+        {% if current_user.role in ['hod', 'staff', 'principal'] %}
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <i class="fa-solid fa-calendar-days" style="color: var(--accent-color);"></i>
+            <select id="yearFilter" class="form-control" onchange="loadLevel(currentLevel)">
+                <option value="">All Years</option>
+                {% for y in years %}
+                <option value="{{ y }}">Year {{ y }}</option>
                 {% endfor %}
-            </tbody>
-        </table>
+            </select>
+        </div>
+        {% endif %}
     </div>
 </div>
 
+<div class="grid grid-cols-2" id="chartGrid" style="gap: 2rem;">
+    <div class="glass-panel">
+        <h3 id="marksTitle" style="margin-bottom: 1.5rem;"><i class="fa-solid fa-graduation-cap"></i> Performance Averages (%)</h3>
+        <canvas id="marksChart" style="max-height: 400px;"></canvas>
+    </div>
+    <div class="glass-panel">
+        <h3 id="attendanceTitle" style="margin-bottom: 1.5rem;"><i class="fa-solid fa-user-check"></i> Attendance Averages (%)</h3>
+        <canvas id="attendanceChart" style="max-height: 400px;"></canvas>
+    </div>
+</div>
+
+<div id="studentDetailGrid" class="grid grid-cols-2" style="margin-top: 2rem; display: none; gap: 2rem;">
+    <!-- Student individual cards will be injected here -->
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    Chart.defaults.color = '#4a7c60';
+    let currentLevel = 1;
+    let currentDept = '';
+    let currentYear = '';
+    let currentSubject = '';
+    let marksChart = null;
+    let attendanceChart = null;
+    let searchTimeout = null;
+
+    Chart.defaults.color = 'rgba(255,255,255,0.7)';
     Chart.defaults.font.family = "'Outfit', sans-serif";
 
-    // Data injected from Flask
-    const periodLabels = {{ period_labels | safe }};
-    const periodData = {{ period_data | safe }};
-    
-    const studentLabels = {{ student_labels | safe }};
-    const studentData = {{ student_data | safe }};
-
-    // Initialize Period Bar Chart
-    const ctxPeriod = document.getElementById('periodChart').getContext('2d');
-    new Chart(ctxPeriod, {
-        type: 'bar',
-        data: {
-            labels: periodLabels,
-            datasets: [{
-                label: 'Total Present',
-                data: periodData,
-                backgroundColor: 'rgba(59, 130, 246, 0.7)',
-                borderColor: 'rgb(59, 130, 246)',
-                borderWidth: 1,
-                borderRadius: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.05)' } },
-                x: { grid: { display: false } }
-            },
-            plugins: {
-                legend: { display: false }
-            }
-        }
+    document.addEventListener("DOMContentLoaded", function() {
+        loadLevel(1);
     });
 
-    // Initialize Student Top Monthly Percentage Chart
-    const ctxStudent = document.getElementById('studentChart').getContext('2d');
-    new Chart(ctxStudent, {
-        type: 'bar',
-        data: {
-            labels: studentLabels,
-            datasets: [{
-                label: 'Monthly %',
-                data: studentData,
-                backgroundColor: 'rgba(16, 185, 129, 0.7)',
-                borderColor: 'rgb(16, 185, 129)',
-                borderWidth: 1,
-                borderRadius: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: { beginAtZero: true, max: 100, grid: { color: 'rgba(255, 255, 255, 0.05)' } },
-                x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 45 } }
+    function debounceSearch() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            loadLevel(currentLevel, { search: document.getElementById('studentSearch').value });
+        }, 500);
+    }
+
+    function loadLevel(level, params = {}) {
+        currentLevel = level;
+        const search = params.search || document.getElementById('studentSearch').value;
+        const exam = document.getElementById('examFilter').value;
+        const yearFilterElem = document.getElementById('yearFilter');
+        const selectedYear = yearFilterElem ? yearFilterElem.value : '';
+        
+        let url = `/api/analytics?level=${level}&search=${encodeURIComponent(search)}&exam=${encodeURIComponent(exam)}`;
+        if (currentDept) url += `&dept=${encodeURIComponent(currentDept)}`;
+        if (selectedYear) url += `&year=${selectedYear}`;
+        else if (currentYear) url += `&year=${currentYear}`;
+        if (currentSubject) url += `&subject=${encodeURIComponent(currentSubject)}`;
+
+        fetch(url)
+            .then(res => res.json())
+            .then(data => {
+                updateUI(data);
+            });
+    }
+
+    function updateUI(data) {
+        const bread = document.getElementById('breadCrumbs');
+        const backBtn = document.getElementById('backBtn');
+        const studentGrid = document.getElementById('studentDetailGrid');
+        const chartGrid = document.getElementById('chartGrid');
+
+        backBtn.style.display = currentLevel > 1 ? 'block' : 'none';
+        
+        if (currentLevel === 1) bread.innerText = "Institution Overview";
+        else if (currentLevel === 2) bread.innerText = `Department: ${currentDept}`;
+        else if (currentLevel === 3) bread.innerText = `Department: ${currentDept} > Year ${currentYear}`;
+
+        if (data.students && data.students.length > 0) {
+            chartGrid.style.display = 'none';
+            studentGrid.style.display = 'grid';
+            renderStudentCards(data.students);
+        } else {
+            chartGrid.style.display = 'grid';
+            studentGrid.style.display = 'none';
+            renderCharts(data);
+        }
+    }
+
+    function renderCharts(data) {
+        // Marks Chart
+        const ctxMarks = document.getElementById('marksChart').getContext('2d');
+        if (marksChart) marksChart.destroy();
+        marksChart = createChart(ctxMarks, 'Avg Marks %', data.labels, data.marks, 'rgba(59, 130, 246, 0.7)', 'rgb(59, 130, 246)');
+
+        // Attendance Chart
+        const ctxAtt = document.getElementById('attendanceChart').getContext('2d');
+        if (attendanceChart) attendanceChart.destroy();
+        attendanceChart = createChart(ctxAtt, 'Avg Attendance %', data.labels, data.attendance, 'rgba(16, 185, 129, 0.7)', 'rgb(16, 185, 129)');
+    }
+
+    function createChart(ctx, label, labels, dataPoints, bgColor, borderColor) {
+        return new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: label,
+                    data: dataPoints,
+                    backgroundColor: bgColor,
+                    borderColor: borderColor,
+                    borderWidth: 1,
+                    borderRadius: 6
+                }]
             },
-            plugins: {
-                legend: { display: false }
+            options: {
+                responsive: true,
+                onClick: (evt, elements) => {
+                    if (elements.length > 0) {
+                        const index = elements[0].index;
+                        handleDrillDown(labels[index]);
+                    }
+                },
+                scales: {
+                    y: { 
+                        beginAtZero: true, 
+                        max: 100,
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                    },
+                    x: { grid: { display: false } }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    function renderStudentCards(students) {
+        const grid = document.getElementById('studentDetailGrid');
+        grid.innerHTML = '';
+
+        students.forEach(s => {
+            const card = document.createElement('div');
+            card.className = 'glass-panel';
+            card.style.padding = '1.5rem';
+            
+            let marksHtml = s.marks_data.map(m => `
+                <div style="margin-bottom: 0.5rem;">
+                    <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:0.2rem;">
+                        <span>${m.subject}</span>
+                        <span style="font-weight:600;">${m.avg}%</span>
+                    </div>
+                    <div style="height:6px; background:rgba(255,255,255,0.1); border-radius:3px; overflow:hidden;">
+                        <div style="height:100%; width:${m.avg}%; background:${m.avg >= 50 ? 'var(--success)' : 'var(--danger)'};"></div>
+                    </div>
+                </div>
+            `).join('');
+
+            card.innerHTML = `
+                <h4 style="margin-bottom: 1rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 0.5rem;">
+                    <i class="fa-solid fa-user-graduate"></i> ${s.name}
+                </h4>
+                <div style="margin-bottom: 1.5rem;">
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Attendance Score</p>
+                    <div style="display:flex; align-items:center; gap:1rem;">
+                        <div style="flex-grow:1; height:10px; background:rgba(255,255,255,0.1); border-radius:5px; overflow:hidden;">
+                            <div style="height:100%; width:${s.attendance_pct}%; background:var(--accent-color);"></div>
+                        </div>
+                        <span style="font-weight:700;">${s.attendance_pct}%</span>
+                    </div>
+                </div>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Subject Performance</p>
+                ${marksHtml}
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    function handleDrillDown(label) {
+        const role = "{{ current_user.role }}";
+        if (currentLevel === 1) {
+            if (role === 'principal') {
+                currentDept = label;
+                loadLevel(2);
+            } else if (role === 'hod') {
+                currentSubject = label;
+                loadLevel(2);
+            } else if (role === 'staff') {
+                const match = label.match(/\((.*) Y(\d)\)/);
+                if (match) {
+                    currentDept = match[1];
+                    currentYear = match[2];
+                    loadLevel(2);
+                }
+            }
+        } else if (currentLevel === 2) {
+            if (role === 'principal') {
+                currentYear = label.replace('Year ', '');
+                loadLevel(3);
             }
         }
-    });
+    }
 
+    function goBack() {
+        if (currentLevel === 3) {
+            currentYear = '';
+            loadLevel(2);
+        } else if (currentLevel === 2) {
+            currentDept = '';
+            currentSubject = '';
+            loadLevel(1);
+        }
+    }
 </script>
+
+<style>
+    .glass-panel:hover {
+        border-color: var(--accent-color);
+        transition: border-color 0.3s;
+    }
+    #mainChart { cursor: pointer; }
+</style>
 {% endblock %}

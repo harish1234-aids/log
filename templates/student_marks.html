@@ -122,6 +122,44 @@
                 }
             }
         });
+
+        // Exam-wise Average Chart
+        const examAverages = exams.map(exam => {
+            const scores = raw_marks.filter(m => m.exam === exam).map(m => m.percentage);
+            return scores.length > 0 ? scores.reduce((a, b) => a + b) / scores.length : 0;
+        });
+
+        const ctxExam = document.createElement('canvas');
+        ctxExam.id = 'examWiseChart';
+        ctxExam.height = 200;
+        ctxExam.style.marginTop = '2rem';
+        document.getElementById('studentProgressionChart').parentNode.appendChild(ctxExam);
+
+        new Chart(ctxExam, {
+            type: 'line',
+            data: {
+                labels: exams,
+                datasets: [{
+                    label: 'Overall Exam Average',
+                    data: examAverages,
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 6,
+                    pointBackgroundColor: '#f59e0b'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: { display: true, text: 'Exam-wise Performance Trend', color: '#fff' }
+                },
+                scales: {
+                    y: { beginAtZero: true, max: 100, grid: { color: 'rgba(255,255,255,0.05)' } }
+                }
+            }
+        });
     });
 </script>
 {% endif %}

@@ -6,10 +6,12 @@
         <form method="GET" action="{{ url_for('manage_marks') }}" style="display: flex; gap: 0.75rem; align-items: center; margin: 0;">
             <span style="color: var(--text-secondary); font-size: 0.875rem;">
                 <i class="fa-solid fa-filter"></i>
-                {% if current_user.role == 'master_admin' %}Master Filter{% else %}Filter Students{% endif %}:
+                {% if current_user.role in ['principal', 'hod'] %}Filter{% else %}Filter Students{% endif %}:
             </span>
             <select name="dept" class="form-control" style="width: auto; padding: 0.4rem 2.2rem 0.4rem 0.75rem;" onchange="this.form.submit()">
+                {% if not current_user.department %}
                 <option value="All">All Departments</option>
+                {% endif %}
                 {% for d in departments %}
                 <option value="{{ d }}" {% if filter_dept == d %}selected{% endif %}>{{ d }}</option>
                 {% endfor %}
@@ -35,7 +37,9 @@
         <div class="form-group" style="margin: 0;">
             <label>Department</label>
             <select name="dept" class="form-control">
+                {% if not current_user.department %}
                 <option value="All">All Departments</option>
+                {% endif %}
                 {% for d in departments %}
                 <option value="{{ d }}">{{ d }}</option>
                 {% endfor %}
@@ -87,88 +91,91 @@
     </form>
 </div>
 
-<div class="grid grid-cols-3" style="align-items: start; gap: 2rem;">
-    <div class="glass-panel" style="grid-column: span 1;">
-        <h3><i class="fa-solid fa-plus" style="color: var(--accent-color);"></i> Upload Marks</h3>
-        <hr style="border-color: var(--glass-border); margin: 1rem 0;">
-        <form method="POST" action="{{ url_for('manage_marks') }}">
-            <input type="hidden" name="action" value="add">
-            <div class="form-group">
-                <label>Target Student</label>
-                <select name="student_id" class="form-control" required>
-                    <option value="">-- Choose Student --</option>
-                    {% for s in students %}
-                    <option value="{{ s.id }}">{{ s.name }} ({{ s.department }} Y{{ s.year }})</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Subject Name</label>
-                {% if current_user.role == 'staff' and staff_subjects %}
-                <select name="subject" class="form-control" required>
-                    <option value="">-- Choose Subject --</option>
-                    {% for subj in staff_subjects %}
-                    <option value="{{ subj }}">{{ subj }}</option>
-                    {% endfor %}
-                </select>
-                {% else %}
-                <input type="text" name="subject" class="form-control" placeholder="E.g. Computer Networks" required>
-                {% endif %}
-            </div>
-            <div class="form-group">
-                <label>Exam Type</label>
-                <select name="exam_type" class="form-control" required>
-                    <option value="Internal 1">Internal 1</option>
-                    <option value="Internal 2">Internal 2</option>
-                    <option value="Model Exam">Model Exam</option>
-                    <option value="Assignment">Assignment</option>
-                    <option value="Semester">Semester</option>
-                </select>
-            </div>
-            <div class="grid grid-cols-2" style="gap: 1rem;">
+<div class="grid {% if current_user.role != 'principal' %}grid-cols-3{% else %}grid-cols-1{% endif %}" style="align-items: start; gap: 2rem;">
+    {% if current_user.role != 'principal' %}
+    <div style="grid-column: span 1; display: flex; flex-direction: column; gap: 2rem;">
+        <div class="glass-panel">
+            <h3><i class="fa-solid fa-plus" style="color: var(--accent-color);"></i> Upload Marks</h3>
+            <hr style="border-color: var(--glass-border); margin: 1rem 0;">
+            <form method="POST" action="{{ url_for('manage_marks') }}">
+                <input type="hidden" name="action" value="add">
                 <div class="form-group">
-                    <label>Marks Scored</label>
-                    <input type="number" step="0.1" name="marks_obtained" class="form-control" required>
+                    <label>Target Student</label>
+                    <select name="student_id" class="form-control" required>
+                        <option value="">-- Choose Student --</option>
+                        {% for s in students %}
+                        <option value="{{ s.id }}">{{ s.name }} ({{ s.department }} Y{{ s.year }})</option>
+                        {% endfor %}
+                    </select>
                 </div>
                 <div class="form-group">
-                    <label>Total Marks</label>
-                    <input type="number" step="0.1" name="max_marks" value="100" class="form-control" required>
+                    <label>Subject Name</label>
+                    {% if current_user.role == 'staff' and staff_subjects %}
+                    <select name="subject" class="form-control" required>
+                        <option value="">-- Choose Subject --</option>
+                        {% for subj in staff_subjects %}
+                        <option value="{{ subj }}">{{ subj }}</option>
+                        {% endfor %}
+                    </select>
+                    {% else %}
+                    <input type="text" name="subject" class="form-control" placeholder="E.g. Computer Networks" required>
+                    {% endif %}
                 </div>
-            </div>
-            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
-                <i class="fa-solid fa-cloud-arrow-up"></i> Save External Record
-            </button>
-        </form>
+                <div class="form-group">
+                    <label>Exam Type</label>
+                    <select name="exam_type" class="form-control" required>
+                        <option value="Internal 1">Internal 1</option>
+                        <option value="Internal 2">Internal 2</option>
+                        <option value="Model Exam">Model Exam</option>
+                        <option value="Assignment">Assignment</option>
+                        <option value="Semester">Semester</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2" style="gap: 1rem;">
+                    <div class="form-group">
+                        <label>Marks Scored</label>
+                        <input type="number" step="0.1" name="marks_obtained" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Total Marks</label>
+                        <input type="number" step="0.1" name="max_marks" value="100" class="form-control" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Save External Record
+                </button>
+            </form>
+        </div>
+
+        <div class="glass-panel" style="border-top: 4px solid #10b981;">
+            <h3><i class="fa-solid fa-file-excel" style="color: #10b981;"></i> Bulk Marks Import</h3>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">
+                Upload Excel with columns:<br>
+                <strong>Student Name, Dept, Year, Subject, Exam Type, Marks, Max Marks</strong>
+            </p>
+            <form method="POST" action="{{ url_for('manage_marks') }}" enctype="multipart/form-data">
+                <input type="hidden" name="action" value="import_marks">
+                <div class="form-group">
+                    <input type="file" name="excel_file" class="form-control" accept=".xlsx" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; background-color: #10b981;">
+                    <i class="fa-solid fa-upload"></i> Import Marks from Excel
+                </button>
+            </form>
+        </div>
     </div>
+    {% endif %}
 
     <div class="glass-panel" style="grid-column: span 2;">
-        {% if current_user.role == 'master_admin' %}
-        <!-- Master: Per-student subject breakdown chart -->
-        <div style="margin-bottom: 2rem; background: rgba(0,0,0,0.1); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--glass-border);">
-            <h3><i class="fa-solid fa-chart-bar" style="color: #8b5cf6;"></i> Per-Student Subject Breakdown <span style="font-size:0.8rem; color:var(--text-secondary); font-weight:400;">(hover for staff info)</span></h3>
-            {% if marks|length == 0 %}
-            <p style="color:var(--text-secondary); text-align:center; padding:2rem;">No marks data to display for this filter.</p>
-            {% else %}
-            <canvas id="masterChart" height="100"></canvas>
-            {% endif %}
-        </div>
-        {% elif current_user.role == 'staff' %}
-        <!-- Staff: Grouped student avg bar chart for the filtered dept/year -->
-        <div style="margin-bottom: 2rem; background: rgba(0,0,0,0.1); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--glass-border);">
-            <h3><i class="fa-solid fa-chart-column" style="color: #10b981;"></i> Student Performance Overview
-                {% if filter_dept != 'All' or filter_year != 'All' %}
-                <span style="font-size:0.85rem; color:#10b981; font-weight:400;">&mdash; {{ filter_dept }} {% if filter_year != 'All' %}| Year {{ filter_year }}{% endif %}</span>
-                {% endif %}
-            </h3>
-            {% if marks|length == 0 %}
-            <p style="color:var(--text-secondary); text-align:center; padding:2rem;">Select a Department and Year to view the comparison chart.</p>
-            {% else %}
-            <canvas id="staffChart" height="110"></canvas>
-            {% endif %}
-        </div>
-        {% endif %}
         
-        <h3 style="margin-bottom: 1rem;"><i class="fa-solid fa-table-list" style="color: var(--accent-color);"></i> Uploaded Records History</h3>
+        <div class="flex-between" style="margin-bottom: 1rem;">
+            <h3 style="margin: 0;"><i class="fa-solid fa-table-list" style="color: var(--accent-color);"></i> Uploaded Records History</h3>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <i class="fa-solid fa-magnifying-glass" style="color: var(--text-secondary); font-size: 0.8rem;"></i>
+                <input type="text" id="historySearch" class="form-control" placeholder="Quick filter records..." style="width: 250px; padding: 0.3rem 0.6rem; font-size: 0.85rem;" onkeyup="filterHistory()">
+            </div>
+        </div>
+        
         <div class="table-container" style="max-height: 500px; overflow-y: auto;">
             <table>
                 <thead>
@@ -206,7 +213,7 @@
                             <i class="fa-solid fa-user-pen"></i> @{{ m.author.username }}
                         </td>
                         <td>
-                            {% if current_user.role == 'master_admin' or m.author_id == current_user.id %}
+                            {% if (current_user.role == 'hod') or m.author_id == current_user.id %}
                             <form method="POST" action="{{ url_for('manage_marks') }}" onsubmit="return confirm('Permanently delete this mark record?');" style="margin:0;">
                                 <input type="hidden" name="action" value="delete">
                                 <input type="hidden" name="mark_id" value="{{ m.id }}">
@@ -234,146 +241,29 @@
 </div>
 
 <script>
-document.addEventListener("DOMContentLoaded", function() {
+function filterHistory() {
+    const input = document.getElementById('historySearch');
+    const filter = input.value.toLowerCase();
+    const table = document.querySelector('.table-container table');
+    const tr = table.getElementsByTagName('tr');
 
-    const CHART_DEFAULTS = {
-        scales: {
-            y: { beginAtZero: true, max: 100, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.6)' } },
-            x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.8)', maxRotation: 30 } }
-        },
-        plugins: { legend: { labels: { color: 'rgba(255,255,255,0.8)', boxWidth: 14 } } },
-        responsive: true,
-        animation: { duration: 700 }
-    };
-
-    {% if current_user.role == 'master_admin' and marks|length > 0 %}
-    // ============================================================
-    // MASTER ADMIN: Per-Student/Subject grouped bar chart
-    // Each group = one student. Each bar within = one subject.
-    // Tooltip shows staff who uploaded that score.
-    // ============================================================
-    const rawMaster = [
-        {% for m in marks %}
-        {
-            student: {{ m.student.id }},
-            studentName: "{{ m.student.name | replace('"', '') }}",
-            subject: "{{ m.subject | replace('"', '') }}",
-            examType: "{{ m.exam_type | replace('"', '') }}",
-            pct: parseFloat({{ (m.marks_obtained / m.max_marks * 100) | round(1) }}),
-            staff: "@{{ m.author.username }}"
-        },
-        {% endfor %}
-    ];
-
-    // Build unique student labels and subject list
-    const masterStudents = [...new Map(rawMaster.map(r => [r.student, r.studentName])).entries()];
-    const masterSubjects = [...new Set(rawMaster.map(r => r.subject))];
-    const PALETTE = [
-        'rgba(139,92,246,0.75)','rgba(16,185,129,0.75)','rgba(245,158,11,0.75)',
-        'rgba(56,189,248,0.75)','rgba(239,68,68,0.75)','rgba(244,114,182,0.75)',
-        'rgba(99,102,241,0.75)','rgba(34,211,238,0.75)'
-    ];
-
-    // For each subject, build a dataset where value is avg % for that student
-    const masterDatasets = masterSubjects.map((subj, idx) => {
-        const data = masterStudents.map(([sid, sname]) => {
-            const records = rawMaster.filter(r => r.student === sid && r.subject === subj);
-            if (records.length === 0) return null;
-            return (records.reduce((a, b) => a + b.pct, 0) / records.length).toFixed(1);
-        });
-        // Build tooltip extras: staff name per student-subject
-        const staffLabels = masterStudents.map(([sid]) => {
-            const rec = rawMaster.find(r => r.student === sid && r.subject === subj);
-            return rec ? rec.staff : 'N/A';
-        });
-        return {
-            label: subj,
-            data: data,
-            backgroundColor: PALETTE[idx % PALETTE.length],
-            borderColor: PALETTE[idx % PALETTE.length].replace('0.75', '1'),
-            borderWidth: 1,
-            borderRadius: 5,
-            staffLabels: staffLabels  // custom extra
-        };
-    });
-
-    const masterCtx = document.getElementById('masterChart').getContext('2d');
-    new Chart(masterCtx, {
-        type: 'bar',
-        data: {
-            labels: masterStudents.map(([, n]) => n),
-            datasets: masterDatasets
-        },
-        options: {
-            ...CHART_DEFAULTS,
-            plugins: {
-                ...CHART_DEFAULTS.plugins,
-                tooltip: {
-                    callbacks: {
-                        afterLabel: function(context) {
-                            const ds = context.dataset;
-                            const staffArr = ds.staffLabels;
-                            if (staffArr && staffArr[context.dataIndex]) {
-                                return '\u{1F464} Handled by: ' + staffArr[context.dataIndex];
-                            }
-                            return '';
-                        }
-                    }
-                }
+    for (let i = 1; i < tr.length; i++) {
+        const td = tr[i].getElementsByTagName('td');
+        let rowMatch = false;
+        if (td.length > 0) {
+            // Check student name (td[0]), subject (td[1]), logged by (td[3])
+            const studentText = td[0].innerText.toLowerCase();
+            const subjectText = td[1].innerText.toLowerCase();
+            const loggedByText = td[3].innerText.toLowerCase();
+            
+            if (studentText.indexOf(filter) > -1 || 
+                subjectText.indexOf(filter) > -1 || 
+                loggedByText.indexOf(filter) > -1) {
+                rowMatch = true;
             }
         }
-    });
-
-    {% elif current_user.role == 'staff' and marks|length > 0 %}
-    // ============================================================
-    // STAFF: Grouped bar chart — students on X-axis
-    // Each bar group = one student. Each bar = one subject avg %.
-    // ============================================================
-    const rawStaff = [
-        {% for m in marks %}
-        {
-            student: {{ m.student.id }},
-            studentName: "{{ m.student.name | replace('"', '') }}",
-            subject: "{{ m.subject | replace('"', '') }}",
-            pct: parseFloat({{ (m.marks_obtained / m.max_marks * 100) | round(1) }})
-        },
-        {% endfor %}
-    ];
-
-    const staffStudents = [...new Map(rawStaff.map(r => [r.student, r.studentName])).entries()];
-    const staffSubjects = [...new Set(rawStaff.map(r => r.subject))];
-    const SPAL = [
-        'rgba(16,185,129,0.75)','rgba(245,158,11,0.75)','rgba(56,189,248,0.75)',
-        'rgba(139,92,246,0.75)','rgba(244,114,182,0.75)','rgba(239,68,68,0.75)'
-    ];
-
-    const staffDatasets = staffSubjects.map((subj, idx) => {
-        const data = staffStudents.map(([sid]) => {
-            const records = rawStaff.filter(r => r.student === sid && r.subject === subj);
-            if (records.length === 0) return null;
-            return (records.reduce((a, b) => a + b.pct, 0) / records.length).toFixed(1);
-        });
-        return {
-            label: subj,
-            data: data,
-            backgroundColor: SPAL[idx % SPAL.length],
-            borderColor: SPAL[idx % SPAL.length].replace('0.75','1'),
-            borderWidth: 1,
-            borderRadius: 5
-        };
-    });
-
-    const staffCtx = document.getElementById('staffChart').getContext('2d');
-    new Chart(staffCtx, {
-        type: 'bar',
-        data: {
-            labels: staffStudents.map(([, n]) => n),
-            datasets: staffDatasets
-        },
-        options: CHART_DEFAULTS
-    });
-    {% endif %}
-
-});
+        tr[i].style.display = rowMatch ? "" : "none";
+    }
+}
 </script>
 {% endblock %}

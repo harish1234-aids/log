@@ -31,7 +31,9 @@
                         {% set subject = row.cells[col_idx] %}
                         
                         {% if col_type == 'break' or col_type == 'lunch' %}
-                            <td style="background: rgba(255,255,255,0.02);"><span style="color: var(--text-secondary); opacity: 0.5;">—</span></td>
+                            {% set bg = 'rgba(245, 158, 11, 0.1)' if col_type == 'break' else 'rgba(139, 92, 246, 0.1)' %}
+                            {% set label = 'BREAK' if col_type == 'break' else 'LUNCH' %}
+                            <td style="background: {{ bg }}; font-size: 0.7rem; font-weight: 700; color: var(--text-secondary);">{{ label }}</td>
                         {% else %}
                             <td style="font-weight: 600; color: var(--text-primary);">
                                 {{ subject if subject else '<span style="color: var(--text-secondary); opacity: 0.5;">Empty</span>' | safe }}

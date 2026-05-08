@@ -22,7 +22,15 @@
     </button>
 
     <div class="nav-links" id="navLinks">
-        {% if current_user.role == 'master_admin' %}
+        {% if current_user.role == 'principal' %}
+            <a href="{{ url_for('manage_hod') }}"><i class="fa-solid fa-users-gear"></i> Manage HOD</a>
+            <a href="{{ url_for('manage_staff') }}"><i class="fa-solid fa-user-tie"></i> Staff</a>
+            <a href="{{ url_for('manage_students') }}"><i class="fa-solid fa-graduation-cap"></i> Students</a>
+            <a href="{{ url_for('analytics') }}"><i class="fa-solid fa-chart-pie"></i> Analytics</a>
+            <a href="{{ url_for('admin_dashboard') }}"><i class="fa-solid fa-clipboard-user"></i> Attendance</a>
+            <a href="{{ url_for('manage_marks') }}"><i class="fa-solid fa-ranking-star"></i> Marks</a>
+            <a href="{{ url_for('timetable_admin') }}"><i class="fa-solid fa-calendar-days"></i> Timetable</a>
+        {% elif current_user.role == 'hod' %}
             <a href="{{ url_for('manage_staff') }}"><i class="fa-solid fa-users-gear"></i> Manage Staff</a>
             <a href="{{ url_for('admin_dashboard') }}"><i class="fa-solid fa-clipboard-user"></i> Attendance</a>
             <a href="{{ url_for('analytics') }}"><i class="fa-solid fa-chart-pie"></i> Analytics</a>
@@ -41,7 +49,7 @@
             <a href="{{ url_for('student_marks') }}"><i class="fa-solid fa-ranking-star"></i> My Grades</a>
         {% endif %}
 
-        {% if current_user.role in ['master_admin', 'staff'] %}
+        {% if current_user.role in ['principal', 'hod', 'staff'] %}
         <button onclick="openProfileModal()" class="profile-btn" title="Account Settings">
             <i class="fa-solid fa-user-gear"></i>
         </button>
@@ -55,7 +63,7 @@
 </nav>
 
 <!-- ── CHANGE CREDENTIALS MODAL ── -->
-{% if current_user.is_authenticated and current_user.role in ['master_admin', 'staff'] %}
+{% if current_user.is_authenticated and current_user.role in ['principal', 'hod', 'staff'] %}
 <div id="profileModal"
      onclick="if(event.target===this) closeProfileModal()"
      style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; z-index:999;
