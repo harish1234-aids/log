@@ -1,8 +1,14 @@
 {% extends 'base.html' %}
+{% block page_title %}Timetable Management{% endblock %}
+
 {% block content %}
 <div class="glass-panel" style="margin-bottom: 2rem;">
-    <h2><i class="fa-solid fa-filter"></i> Select Class</h2>
-    <form method="GET" action="{{ url_for('timetable_admin') }}" class="grid grid-cols-3" style="align-items: end; gap: 1rem;">
+    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+        <div class="stat-icon" style="margin-bottom: 0;"><i class="fa-solid fa-filter"></i></div>
+        <h3 style="margin: 0;">Configuration & Filters</h3>
+    </div>
+    
+    <form method="GET" action="{{ url_for('timetable_admin') }}" class="grid grid-cols-3" style="align-items: end;">
         <div class="form-group" style="margin-bottom: 0;">
             <label>Department</label>
             {% if current_user.department %}
@@ -28,17 +34,17 @@
         </div>
         <div class="form-group" style="margin-bottom: 0;">
             <button type="submit" class="btn btn-primary" style="width: 100%;">
-                <i class="fa-solid fa-magnifying-glass"></i> Load Timetable
+                <i class="fa-solid fa-arrows-rotate"></i> Load Schedule
             </button>
         </div>
     </form>
 </div>
 
 {% if selected_dept and selected_year %}
-<div class="grid grid-cols-2" style="gap: 2rem; margin-bottom: 2rem;">
+<div class="grid grid-cols-2" style="margin-bottom: 2rem;">
     <div class="glass-panel">
-        <h2><i class="fa-solid fa-clock"></i> Timetable Matrix Generator</h2>
-        <p style="color: var(--text-secondary); margin-bottom: 2rem;">Configure the grid parameters to generate a full Multi-Day schedule.</p>
+        <h3 style="margin-bottom: 0.5rem;"><i class="fa-solid fa-wand-magic-sparkles" style="color: var(--accent-color);"></i> Grid Generator</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.85rem;">Initialize a new timetable matrix for this class.</p>
         
         <form method="POST" action="{{ url_for('timetable_admin') }}">
             <input type="hidden" name="action" value="generate">
@@ -46,57 +52,59 @@
             <input type="hidden" name="target_year" value="{{ selected_year }}">
             <div class="grid grid-cols-2" style="gap: 1rem;">
                 <div class="form-group">
-                    <label>Number of Days</label>
+                    <label>Days/Week</label>
                     <input type="number" name="total_days" class="form-control" value="{{ config.total_days or 5 }}" min="1">
                 </div>
                 <div class="form-group">
-                    <label>Total Periods</label>
+                    <label>Periods/Day</label>
                     <input type="number" name="total_periods" class="form-control" value="{{ config.total_periods }}" min="1">
                 </div>
                 <div class="form-group">
-                    <label>Break After #</label>
+                    <label>Break After P#</label>
                     <input type="number" name="break_after" class="form-control" value="{{ config.break_after }}" min="1">
                 </div>
                 <div class="form-group">
-                    <label>Lunch After #</label>
+                    <label>Lunch After P#</label>
                     <input type="number" name="lunch_after" class="form-control" value="{{ config.lunch_after }}" min="1">
                 </div>
             </div>
-            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
-                <i class="fa-solid fa-wand-magic-sparkles"></i> Initialize Timetable Grid
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;">
+                Generate Empty Matrix
             </button>
         </form>
     </div>
 
-    <div class="glass-panel" style="border-top: 4px solid #10b981;">
-        <h2><i class="fa-solid fa-file-excel" style="color: #10b981;"></i> Bulk Timetable Import</h2>
-        <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">
-            Upload Excel with columns:<br>
-            <strong>Dept, Year, Day, P1, P2, P3, P4, P5, P6, P7, P8</strong>
+    <div class="glass-panel" style="border-top: 4px solid var(--info);">
+        <h3 style="margin-bottom: 0.5rem;"><i class="fa-solid fa-file-excel" style="color: var(--info);"></i> Bulk Excel Import</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.85rem;">
+            Upload existing schedules from Excel spreadsheet (.xlsx).
         </p>
         <form method="POST" action="{{ url_for('timetable_admin') }}" enctype="multipart/form-data">
             <input type="hidden" name="action" value="import_timetable">
             <div class="form-group">
+                <label>Choose File</label>
                 <input type="file" name="excel_file" class="form-control" accept=".xlsx" required>
             </div>
-            <button type="submit" class="btn btn-primary" style="width: 100%; background-color: #10b981;">
-                <i class="fa-solid fa-upload"></i> Import Timetable from Excel
+            <button type="submit" class="btn btn-secondary" style="width: 100%; border-color: var(--info); color: var(--info);">
+                <i class="fa-solid fa-cloud-arrow-up"></i> Import Data
             </button>
         </form>
     </div>
 </div>
 
 <!-- Layout Editor Matrix-->
-<div class="glass-panel" id="layoutPreviewPanel" style="display: none; overflow-x: auto;">
-    <div class="flex-between">
-        <h3><i class="fa-solid fa-layer-group"></i> Master Schedule Editor</h3>
+<div class="glass-panel" id="layoutPreviewPanel" style="display: none;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <div>
+            <h3 style="margin: 0;">Schedule Matrix Editor</h3>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.25rem;">Editing {{ selected_dept }} - Year {{ selected_year }}</p>
+        </div>
         {% if current_user.role != 'principal' %}
-        <button type="button" class="btn btn-primary" style="background-color: var(--success);" onclick="document.getElementById('saveNamesForm').submit()">
-            <i class="fa-solid fa-floppy-disk"></i> Save Timetable Matrix
+        <button type="button" class="btn btn-primary" onclick="document.getElementById('saveNamesForm').submit()">
+            <i class="fa-solid fa-floppy-disk"></i> Save Changes
         </button>
         {% endif %}
     </div>
-    <p style="color: var(--text-secondary); margin-top: -1rem; margin-bottom: 1.5rem; font-size: 0.875rem;">Modify the <strong>Day Names</strong> and fill in the <strong>Subjects</strong> in the empty cells. Empty boxes default to "—".</p>
 
     <form id="saveNamesForm" method="POST" action="{{ url_for('timetable_admin') }}">
         <input type="hidden" name="action" value="save_names">
@@ -105,14 +113,10 @@
         <input type="hidden" id="layout_data_input" name="layout_data" value="">
     </form>
     
-    <div class="table-container" style="margin-top: 1.5rem;">
-        <table id="matrixTable" style="min-width: 800px; text-align: center;">
-            <thead id="matrixHead">
-                <!-- JS Inject -->
-            </thead>
-            <tbody id="matrixBody">
-                <!-- JS inject -->
-            </tbody>
+    <div class="table-container" style="overflow-x: auto;">
+        <table id="matrixTable" style="min-width: 900px;">
+            <thead id="matrixHead"></thead>
+            <tbody id="matrixBody"></tbody>
         </table>
     </div>
 </div>
@@ -133,69 +137,54 @@ document.addEventListener("DOMContentLoaded", function() {
         try { layout = JSON.parse(rawStr); } catch(e) {}
     }
     
-    // If empty or shape entirely mismatching, rebuild columns
     if (!layout.columns || layout.columns.length === 0) {
         let academicCount = 1;
         while(academicCount <= totalPeriods) {
-            layout.columns.push({ id: 'p_'+academicCount, name: 'Period ' + academicCount, type: 'academic' });
-            
-            if (academicCount === breakAfter) {
-                layout.columns.push({ id: 'b', name: 'Short Break', type: 'break' });
-            }
-            if (academicCount === lunchAfter) {
-                layout.columns.push({ id: 'l', name: 'Lunch', type: 'lunch' });
-            }
+            layout.columns.push({ id: 'p_'+academicCount, name: 'P' + academicCount, type: 'academic' });
+            if (academicCount === breakAfter) layout.columns.push({ id: 'b', name: 'Break', type: 'break' });
+            if (academicCount === lunchAfter) layout.columns.push({ id: 'l', name: 'Lunch', type: 'lunch' });
             academicCount++;
         }
         
-        // Setup empty grid rows
         const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
         for(let d = 1; d <= totalDays; d++) {
-            let defaultDayName = dayNames[(d-1) % 7];
-            let cells = [];
-            for(let c = 0; c < layout.columns.length; c++) {
-                cells.push("");
-            }
-            layout.grid.push({ day_name: "Day " + d + " - " + defaultDayName, cells: cells });
+            let cells = layout.columns.map(() => "");
+            layout.grid.push({ day_name: dayNames[(d-1) % 7] || ("Day " + d), cells: cells });
         }
     }
     
     if(layout.columns && layout.columns.length > 0) {
         document.getElementById('layoutPreviewPanel').style.display = 'block';
         
-        // Construct Header row
         const thead = document.getElementById('matrixHead');
         let trHead = document.createElement('tr');
-        trHead.innerHTML = `<th style="width: 15%; background: rgba(255,255,255,0.05);">Serial / Date</th>`;
+        trHead.innerHTML = `<th>Day / Time</th>`;
         layout.columns.forEach((col, cIdx) => {
             let color = 'inherit';
-            if(col.type === 'break') color = '#f59e0b';
+            if(col.type === 'break') color = 'var(--warning)';
             if(col.type === 'lunch') color = 'var(--accent-color)';
             trHead.innerHTML += `
-               <th style="color: ${color}; text-align: center;">
-                 <input type="text" value="${col.name}" class="form-control" style="background:transparent; border:none; text-align:center; padding:0; font-weight:bold; color:inherit; width: 100px;" onchange="updateColumn(${cIdx}, this.value)" ${isPrincipal ? 'disabled' : ''}>
+               <th style="text-align: center;">
+                 <input type="text" value="${col.name}" class="form-control" style="background:transparent; border:none; text-align:center; padding:0; font-weight:700; color:${color}; font-size:0.75rem;" onchange="updateColumn(${cIdx}, this.value)" ${isPrincipal ? 'disabled' : ''}>
                </th>`;
         });
         thead.appendChild(trHead);
         
-        // Construct Body rows
         const tbody = document.getElementById('matrixBody');
         layout.grid.forEach((row, rIdx) => {
             let trHtml = `
-                <td style="background: rgba(255,255,255,0.02); font-weight: 600;">
-                   <input type="text" value="${row.day_name}" class="form-control" style="background:transparent; border:none; font-weight:bold; color:var(--text-primary); padding:0; width: 100%;" onchange="updateRowName(${rIdx}, this.value)" ${isPrincipal ? 'disabled' : ''}>
+                <td style="background: #f8fafc; font-weight: 600; border-right: 1px solid #e2e8f0;">
+                   <input type="text" value="${row.day_name}" class="form-control" style="background:transparent; border:none; font-weight:700; color:var(--text-primary); padding:0; width: 100px;" onchange="updateRowName(${rIdx}, this.value)" ${isPrincipal ? 'disabled' : ''}>
                 </td>`;
             
             layout.columns.forEach((col, cIdx) => {
-                let cellVal = row.cells[cIdx] || "";
                 if (col.type !== 'academic') {
-                    // Distinct background for breaks/lunch
-                    let bg = col.type === 'break' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(139, 92, 246, 0.1)';
-                    let label = col.type === 'break' ? 'BREAK' : 'LUNCH';
-                    trHtml += `<td style="background: ${bg}; font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); vertical-align: middle;">${label}</td>`;
+                    let bg = col.type === 'break' ? '#fffbeb' : '#ecfdf5';
+                    let label = col.name.toUpperCase();
+                    trHtml += `<td style="background: ${bg}; font-size: 0.65rem; font-weight: 800; color: var(--text-secondary); text-align: center; vertical-align: middle;">${label}</td>`;
                 } else {
                     trHtml += `<td>
-                       <input type="text" value="${cellVal}" class="form-control" placeholder="Subject..." style="width: 100%; border: 1px solid var(--glass-border);" onchange="updateCell(${rIdx}, ${cIdx}, this.value)" ${isPrincipal ? 'disabled' : ''}>
+                       <input type="text" value="${row.cells[cIdx] || ""}" class="form-control" placeholder="—" style="text-align: center; font-size: 0.85rem;" onchange="updateCell(${rIdx}, ${cIdx}, this.value)" ${isPrincipal ? 'disabled' : ''}>
                     </td>`;
                 }
             });

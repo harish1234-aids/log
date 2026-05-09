@@ -10,196 +10,193 @@
 </head>
 <body>
 
-<nav class="navbar">
-    <a href="{{ url_for('index') }}" class="nav-brand">
-        <i class="fa-solid fa-graduation-cap"></i> ManageAttend
-    </a>
-
+<div class="app-container">
     {% if current_user.is_authenticated %}
-    <!-- Hamburger (mobile only) -->
-    <button class="hamburger" id="hamburger" aria-label="Toggle menu" onclick="toggleNav()">
-        <span></span><span></span><span></span>
-    </button>
+    <!-- Sidebar Overlay (Mobile) -->
+    <div class="mobile-overlay" id="mobileOverlay" onclick="toggleSidebar()"></div>
 
-    <div class="nav-links" id="navLinks">
-        {% if current_user.role == 'principal' %}
-            <a href="{{ url_for('manage_hod') }}"><i class="fa-solid fa-users-gear"></i> Manage HOD</a>
-            <a href="{{ url_for('manage_staff') }}"><i class="fa-solid fa-user-tie"></i> Staff</a>
-            <a href="{{ url_for('manage_students') }}"><i class="fa-solid fa-graduation-cap"></i> Students</a>
-            <a href="{{ url_for('analytics') }}"><i class="fa-solid fa-chart-pie"></i> Analytics</a>
-            <a href="{{ url_for('admin_dashboard') }}"><i class="fa-solid fa-clipboard-user"></i> Attendance</a>
-            <a href="{{ url_for('manage_marks') }}"><i class="fa-solid fa-ranking-star"></i> Marks</a>
-            <a href="{{ url_for('timetable_admin') }}"><i class="fa-solid fa-calendar-days"></i> Timetable</a>
-        {% elif current_user.role == 'hod' %}
-            <a href="{{ url_for('manage_staff') }}"><i class="fa-solid fa-users-gear"></i> Manage Staff</a>
-            <a href="{{ url_for('admin_dashboard') }}"><i class="fa-solid fa-clipboard-user"></i> Attendance</a>
-            <a href="{{ url_for('analytics') }}"><i class="fa-solid fa-chart-pie"></i> Analytics</a>
-            <a href="{{ url_for('manage_students') }}"><i class="fa-solid fa-graduation-cap"></i> Students</a>
-            <a href="{{ url_for('manage_marks') }}"><i class="fa-solid fa-ranking-star"></i> Marks</a>
-            <a href="{{ url_for('timetable_admin') }}"><i class="fa-solid fa-calendar-days"></i> Timetable</a>
-        {% elif current_user.role == 'staff' %}
-            <a href="{{ url_for('admin_dashboard') }}"><i class="fa-solid fa-clipboard-user"></i> Attendance</a>
-            <a href="{{ url_for('analytics') }}"><i class="fa-solid fa-chart-pie"></i> Analytics</a>
-            <a href="{{ url_for('manage_students') }}"><i class="fa-solid fa-graduation-cap"></i> Students</a>
-            <a href="{{ url_for('manage_marks') }}"><i class="fa-solid fa-ranking-star"></i> Marks</a>
-        {% else %}
-            <a href="{{ url_for('student_home') }}"><i class="fa-solid fa-house"></i> Home</a>
-            <a href="{{ url_for('student_attendance_list') }}"><i class="fa-solid fa-calendar-check"></i> Attendance</a>
-            <a href="{{ url_for('student_timetable') }}"><i class="fa-solid fa-clock"></i> Timetable</a>
-            <a href="{{ url_for('student_marks') }}"><i class="fa-solid fa-ranking-star"></i> My Grades</a>
-        {% endif %}
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="{{ url_for('index') }}" class="sidebar-brand">
+                <i class="fa-solid fa-graduation-cap"></i> ManageAttend
+            </a>
+        </div>
 
-        {% if current_user.role in ['principal', 'hod', 'staff'] %}
-        <button onclick="openProfileModal()" class="profile-btn" title="Account Settings">
-            <i class="fa-solid fa-user-gear"></i>
-        </button>
-        {% endif %}
+        <nav class="sidebar-nav">
+            {% if current_user.role == 'principal' %}
+                <div class="nav-group-label">Administrative</div>
+                <a href="{{ url_for('manage_hod') }}" class="nav-item"><i class="fa-solid fa-users-gear"></i> Manage HOD</a>
+                <a href="{{ url_for('manage_staff') }}" class="nav-item"><i class="fa-solid fa-user-tie"></i> Staff</a>
+                <a href="{{ url_for('manage_students') }}" class="nav-item"><i class="fa-solid fa-graduation-cap"></i> Students</a>
+                
+                <div class="nav-group-label">Academic</div>
+                <a href="{{ url_for('analytics') }}" class="nav-item"><i class="fa-solid fa-chart-pie"></i> Analytics</a>
+                <a href="{{ url_for('admin_dashboard') }}" class="nav-item"><i class="fa-solid fa-clipboard-user"></i> Attendance</a>
+                <a href="{{ url_for('manage_marks') }}" class="nav-item"><i class="fa-solid fa-ranking-star"></i> Marks</a>
+                <a href="{{ url_for('timetable_admin') }}" class="nav-item"><i class="fa-solid fa-calendar-days"></i> Timetable</a>
 
-        <a href="{{ url_for('logout') }}" class="btn btn-primary" style="padding: 0.48rem 1rem;">
-            <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
-        </a>
-    </div>
+            {% elif current_user.role == 'hod' %}
+                <div class="nav-group-label">Management</div>
+                <a href="{{ url_for('manage_staff') }}" class="nav-item"><i class="fa-solid fa-users-gear"></i> Manage Staff</a>
+                <a href="{{ url_for('manage_students') }}" class="nav-item"><i class="fa-solid fa-graduation-cap"></i> Students</a>
+                
+                <div class="nav-group-label">Records</div>
+                <a href="{{ url_for('admin_dashboard') }}" class="nav-item"><i class="fa-solid fa-clipboard-user"></i> Attendance</a>
+                <a href="{{ url_for('analytics') }}" class="nav-item"><i class="fa-solid fa-chart-pie"></i> Analytics</a>
+                <a href="{{ url_for('manage_marks') }}" class="nav-item"><i class="fa-solid fa-ranking-star"></i> Marks</a>
+                <a href="{{ url_for('timetable_admin') }}" class="nav-item"><i class="fa-solid fa-calendar-days"></i> Timetable</a>
+
+            {% elif current_user.role == 'staff' %}
+                <div class="nav-group-label">Academic</div>
+                <a href="{{ url_for('admin_dashboard') }}" class="nav-item"><i class="fa-solid fa-clipboard-user"></i> Attendance</a>
+                <a href="{{ url_for('analytics') }}" class="nav-item"><i class="fa-solid fa-chart-pie"></i> Analytics</a>
+                <a href="{{ url_for('manage_students') }}" class="nav-item"><i class="fa-solid fa-graduation-cap"></i> Students</a>
+                <a href="{{ url_for('manage_marks') }}" class="nav-item"><i class="fa-solid fa-ranking-star"></i> Marks</a>
+
+            {% else %}
+                <div class="nav-group-label">Student Portal</div>
+                <a href="{{ url_for('student_home') }}" class="nav-item"><i class="fa-solid fa-house"></i> Overview</a>
+                <a href="{{ url_for('student_attendance_list') }}" class="nav-item"><i class="fa-solid fa-calendar-check"></i> My Attendance</a>
+                <a href="{{ url_for('student_timetable') }}" class="nav-item"><i class="fa-solid fa-clock"></i> Timetable</a>
+                <a href="{{ url_for('student_marks') }}" class="nav-item"><i class="fa-solid fa-ranking-star"></i> My Grades</a>
+            {% endif %}
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="{{ url_for('logout') }}" class="nav-item" style="color: var(--danger);">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
+            </a>
+        </div>
+    </aside>
     {% endif %}
-</nav>
+
+    <main class="main-content {% if not current_user.is_authenticated %}full-width{% endif %}">
+        {% if current_user.is_authenticated %}
+        <header class="top-header">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <button class="hamburger" onclick="toggleSidebar()">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div class="page-title">
+                    {% block page_title %}Dashboard{% endblock %}
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <div class="user-profile-summary" onclick="{% if current_user.role in ['principal', 'hod', 'staff'] %}openProfileModal(){% endif %}">
+                    <div class="user-avatar">
+                        {{ current_user.username[0].upper() }}
+                    </div>
+                    <div class="user-info">
+                        <div class="user-name">{{ current_user.username }}</div>
+                        <div class="user-role">{{ current_user.role.replace('_', ' ') }}</div>
+                    </div>
+                    {% if current_user.role in ['principal', 'hod', 'staff'] %}
+                    <i class="fa-solid fa-chevron-down" style="font-size: 0.7rem; color: var(--text-secondary);"></i>
+                    {% endif %}
+                </div>
+            </div>
+        </header>
+        {% endif %}
+
+        <div class="container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            <i class="fa-solid {% if category == 'success' %}fa-circle-check{% elif category == 'danger' %}fa-circle-xmark{% else %}fa-circle-info{% endif %}"></i>
+                            <div>{{ message }}</div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+</div>
 
 <!-- ── CHANGE CREDENTIALS MODAL ── -->
 {% if current_user.is_authenticated and current_user.role in ['principal', 'hod', 'staff'] %}
-<div id="profileModal"
-     onclick="if(event.target===this) closeProfileModal()"
-     style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; z-index:999;
-            background:rgba(0,0,0,0.35); backdrop-filter:blur(4px);
-            align-items:center; justify-content:center; padding: 1.25rem; overflow-y: auto;">
-
+<div id="profileModal" class="modal" onclick="if(event.target===this) closeProfileModal()">
     <div class="profile-modal-inner">
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.4rem;">
-            <div style="display:flex; align-items:center; gap:0.7rem;">
-                <div style="width:40px; height:40px; background:var(--accent-light); border-radius:12px;
-                            display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                    <i class="fa-solid fa-user-gear" style="color:var(--accent-color); font-size:1.1rem;"></i>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem;">
+            <div style="display:flex; align-items:center; gap:0.75rem;">
+                <div class="user-avatar" style="width: 40px; height: 40px; border-radius: 12px;">
+                    <i class="fa-solid fa-user-gear"></i>
                 </div>
                 <div>
-                    <h3 style="margin:0; font-size:1.05rem;">Account Settings</h3>
-                    <p style="margin:0; font-size:0.78rem; color:var(--text-secondary);">
-                        @{{ current_user.username }}
-                        <span style="background:var(--accent-light); color:var(--accent-color);
-                                     font-size:0.7rem; padding:0.1rem 0.45rem; border-radius:9999px;
-                                     font-weight:600; margin-left:0.3rem; text-transform:uppercase;">
-                            {{ current_user.role.replace('_', ' ') }}
-                        </span>
-                    </p>
+                    <h3 style="margin:0; font-size:1rem;">Account Settings</h3>
+                    <p style="margin:0; font-size:0.75rem; color:var(--text-secondary);">Manage your credentials</p>
                 </div>
             </div>
-            <button onclick="closeProfileModal()"
-                    style="background:none; border:none; cursor:pointer; font-size:1.1rem;
-                           color:var(--text-secondary); padding:0.25rem; line-height:1;">
+            <button onclick="closeProfileModal()" class="modal-close">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
 
         <form method="POST" action="{{ url_for('change_credentials') }}" id="credForm">
             <div class="form-group">
-                <label><i class="fa-solid fa-user" style="color:var(--accent-color);"></i> New Username</label>
+                <label>New Username</label>
                 <input type="text" name="new_username" class="form-control"
-                       value="{{ current_user.username }}" placeholder="Enter new username"
-                       required autocomplete="off">
+                       value="{{ current_user.username }}" required autocomplete="off">
             </div>
 
-            <hr style="border:none; border-top:1px solid #e8f5ee; margin:1.1rem 0;">
-            <p style="font-size:0.8rem; color:var(--text-secondary); margin:0 0 1rem;">
-                <i class="fa-solid fa-lock" style="color:var(--accent-color);"></i>
-                Leave password fields empty to keep current password.
-            </p>
+            <div style="background: #f8fafc; padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem;">
+                <p style="font-size:0.75rem; color:var(--text-secondary); margin:0 0 1rem; display: flex; gap: 0.5rem;">
+                    <i class="fa-solid fa-info-circle" style="color:var(--accent-color);"></i>
+                    Leave password fields empty to keep current password.
+                </p>
 
-            <div class="form-group" style="position:relative;">
-                <label><i class="fa-solid fa-key" style="color:var(--accent-color);"></i> New Password</label>
-                <input type="password" id="newPwd" name="new_password" class="form-control"
-                       placeholder="New password" autocomplete="new-password">
-                <button type="button" onclick="togglePwd('newPwd','eyeNew')"
-                        style="position:absolute; right:0.75rem; bottom:0.6rem; background:none;
-                               border:none; cursor:pointer; color:var(--text-secondary); width:32px; height:32px;
-                               display:flex; align-items:center; justify-content:center;">
-                    <i id="eyeNew" class="fa-solid fa-eye"></i>
-                </button>
+                <div class="form-group" style="position:relative; margin-bottom: 0.75rem;">
+                    <label>New Password</label>
+                    <input type="password" id="newPwd" name="new_password" class="form-control"
+                           placeholder="••••••••" autocomplete="new-password">
+                    <button type="button" onclick="togglePwd('newPwd','eyeNew')"
+                            style="position:absolute; right:0.5rem; bottom:0.4rem; background:none; border:none; cursor:pointer; color:var(--text-secondary); padding: 0.25rem;">
+                        <i id="eyeNew" class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
+
+                <div class="form-group" style="position:relative; margin-bottom: 0;">
+                    <label>Confirm Password</label>
+                    <input type="password" id="confirmPwd" name="confirm_password" class="form-control"
+                           placeholder="••••••••" autocomplete="new-password">
+                    <button type="button" onclick="togglePwd('confirmPwd','eyeConfirm')"
+                            style="position:absolute; right:0.5rem; bottom:0.4rem; background:none; border:none; cursor:pointer; color:var(--text-secondary); padding: 0.25rem;">
+                        <i id="eyeConfirm" class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
             </div>
 
-            <div class="form-group" style="position:relative;">
-                <label><i class="fa-solid fa-key" style="color:var(--accent-color);"></i> Confirm Password</label>
-                <input type="password" id="confirmPwd" name="confirm_password" class="form-control"
-                       placeholder="Re-enter new password" autocomplete="new-password">
-                <button type="button" onclick="togglePwd('confirmPwd','eyeConfirm')"
-                        style="position:absolute; right:0.75rem; bottom:0.6rem; background:none;
-                               border:none; cursor:pointer; color:var(--text-secondary); width:32px; height:32px;
-                               display:flex; align-items:center; justify-content:center;">
-                    <i id="eyeConfirm" class="fa-solid fa-eye"></i>
-                </button>
-            </div>
-
-            <p id="pwdError" style="color:var(--danger); font-size:0.82rem; display:none; margin-top:-0.5rem; margin-bottom:1rem;">
+            <p id="pwdError" style="color:var(--danger); font-size:0.75rem; display:none; margin-bottom:1rem;">
                 <i class="fa-solid fa-triangle-exclamation"></i> Passwords do not match!
             </p>
 
             <button type="submit" class="btn btn-primary btn-block">
-                <i class="fa-solid fa-floppy-disk"></i> Save Changes
+                Update Profile
             </button>
         </form>
     </div>
 </div>
-
-<style>
-    @keyframes slideUp {
-        from { opacity: 0; transform: translateY(20px); }
-        to   { opacity: 1; transform: translateY(0); }
-    }
-</style>
 {% endif %}
 
-<div class="container">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category }}" style="white-space: pre-line;">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-
-    {% block content %}{% endblock %}
-</div>
-
 <script>
-    /* ── Mobile nav toggle ── */
-    function toggleNav() {
-        var nav = document.getElementById('navLinks');
-        var btn = document.getElementById('hamburger');
-        nav.classList.toggle('open');
-        btn.classList.toggle('open');
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('mobileOverlay');
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('open');
     }
-    /* Close menu when a nav link is clicked */
-    document.querySelectorAll('.nav-links a').forEach(function(link) {
-        link.addEventListener('click', function() {
-            document.getElementById('navLinks').classList.remove('open');
-            document.getElementById('hamburger').classList.remove('open');
-        });
-    });
-    /* Close nav on outside click */
-    document.addEventListener('click', function(e) {
-        var nav = document.getElementById('navLinks');
-        var btn = document.getElementById('hamburger');
-        if (nav && btn && !nav.contains(e.target) && !btn.contains(e.target)) {
-            nav.classList.remove('open');
-            btn.classList.remove('open');
-        }
-    });
 
     /* ── Profile modal ── */
     function openProfileModal() {
-        document.getElementById('profileModal').style.display = 'flex';
+        document.getElementById('profileModal').classList.add('open');
         document.body.style.overflow = 'hidden';
-        // close mobile menu if open
-        document.getElementById('navLinks').classList.remove('open');
-        document.getElementById('hamburger').classList.remove('open');
     }
     function closeProfileModal() {
-        document.getElementById('profileModal').style.display = 'none';
+        document.getElementById('profileModal').classList.remove('open');
         document.body.style.overflow = '';
     }
     function togglePwd(inputId, eyeId) {
@@ -208,6 +205,17 @@
         inp.type = inp.type === 'password' ? 'text' : 'password';
         eye.className = inp.type === 'password' ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
     }
+    
+    // Highlight active nav item
+    document.addEventListener('DOMContentLoaded', function() {
+        const currentPath = window.location.pathname;
+        document.querySelectorAll('.nav-item').forEach(item => {
+            if (item.getAttribute('href') === currentPath) {
+                item.classList.add('active');
+            }
+        });
+    });
+
     var cf = document.getElementById('credForm');
     if (cf) {
         cf.addEventListener('submit', function(e) {

@@ -98,11 +98,15 @@ def manage_hod():
             username = request.form.get('username')
             password = request.form.get('password')
             dept = request.form.get('department')
+            name = request.form.get('name')
+            phone = request.form.get('phone')
+            email = request.form.get('email')
+            gender = request.form.get('gender')
             
             if User.query.filter_by(username=username).first():
                 flash('Username already exists!', 'danger')
             else:
-                hod = User(username=username, role='hod', department=dept)
+                hod = User(username=username, role='hod', department=dept, name=name, phone=phone, email=email, gender=gender)
                 hod.set_password(password)
                 db.session.add(hod)
                 db.session.commit()
@@ -121,6 +125,10 @@ def manage_hod():
             new_username = request.form.get('username')
             new_password = request.form.get('password')
             new_dept = request.form.get('department')
+            name = request.form.get('name')
+            phone = request.form.get('phone')
+            email = request.form.get('email')
+            gender = request.form.get('gender')
 
             hod_user = User.query.get(user_id)
             if hod_user and hod_user.role == 'hod':
@@ -130,13 +138,62 @@ def manage_hod():
                 else:
                     hod_user.username = new_username
                     hod_user.department = new_dept
+                    hod_user.name = name
+                    hod_user.phone = phone
+                    hod_user.email = email
+                    hod_user.gender = gender
                     if new_password:
                         hod_user.set_password(new_password)
                     db.session.commit()
                     flash('HOD updated successfully!', 'success')
 
+        elif action == 'import_hod':
+            file = request.files.get('excel_file')
+            if not file or not file.filename.endswith('.xlsx'):
+                flash('Please upload a valid .xlsx file', 'danger')
+            else:
+                try:
+                    wb = openpyxl.load_workbook(file)
+                    ws = wb.active
+                    added_count = 0
+                    error_rows = []
+                    
+                    # Columns: Username, Password, Name, Department, Phone, Email, Gender
+                    for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                        if not row or all(cell is None for cell in row): continue
+                        
+                        username = str(row[0]).strip() if len(row) > 0 and row[0] is not None else ''
+                        password = str(row[1]).strip() if len(row) > 1 and row[1] is not None else ''
+                        name = str(row[2]).strip() if len(row) > 2 and row[2] is not None else ''
+                        dept = str(row[3]).strip() if len(row) > 3 and row[3] is not None else ''
+                        phone = str(row[4]).strip() if len(row) > 4 and row[4] is not None else ''
+                        email = str(row[5]).strip() if len(row) > 5 and row[5] is not None else ''
+                        gender = str(row[6]).strip() if len(row) > 6 and row[6] is not None else ''
+                        
+                        if not username or not password or not dept:
+                            error_rows.append(f'Row {row_num}: Missing Username, Password or Department')
+                            continue
+                        
+                        if User.query.filter_by(username=username).first():
+                            error_rows.append(f'Row {row_num}: Username "{username}" already exists')
+                            continue
+                            
+                        hod = User(username=username, role='hod', department=dept, name=name, phone=phone, email=email, gender=gender)
+                        hod.set_password(password)
+                        db.session.add(hod)
+                        added_count += 1
+                    
+                    if error_rows:
+                        db.session.rollback()
+                        flash('Import failed! Errors:\n' + '\n'.join(error_rows), 'danger')
+                    else:
+                        db.session.commit()
+                        flash(f'Successfully imported {added_count} HODs!', 'success')
+                except Exception as e:
+                    db.session.rollback()
+                    flash(f'Error: {str(e)}', 'danger')
+
     hod_members = User.query.filter_by(role='hod').all()
-    # Get unique departments for the dropdown
     departments = [d[0] for d in db.session.query(Student.department).distinct().all() if d[0]]
     if not departments: departments = ['CSE', 'IT', 'ECE', 'MECH']
     
@@ -159,15 +216,21 @@ def manage_staff():
         if action == 'add':
             username = request.form.get('username')
             password = request.form.get('password')
+            name = request.form.get('name')
+            phone = request.form.get('phone')
+            email = request.form.get('email')
+            gender = request.form.get('gender')
             
             if User.query.filter_by(username=username).first():
                 flash('Username already exists!', 'danger')
             else:
-                staff = User(username=username, role='staff', department=current_user.department if current_user.role == 'hod' else None)
+                staff = User(username=username, role='staff', 
+                             department=current_user.department if current_user.role == 'hod' else None,
+                             name=name, phone=phone, email=email, gender=gender)
                 staff.set_password(password)
                 db.session.add(staff)
                 db.session.commit()
-                flash('Staff Admin created successfully!', 'success')
+                flash('Staff account created successfully!', 'success')
                 
         elif action == 'delete':
             user_id = request.form.get('user_id')
@@ -181,6 +244,10 @@ def manage_staff():
             user_id = request.form.get('user_id')
             new_username = request.form.get('username')
             new_password = request.form.get('password') # optional
+            name = request.form.get('name')
+            phone = request.form.get('phone')
+            email = request.form.get('email')
+            gender = request.form.get('gender')
 
             staff_user = User.query.get(user_id)
             if staff_user and staff_user.role == 'staff':
@@ -189,6 +256,10 @@ def manage_staff():
                     flash('Username already taken.', 'danger')
                 else:
                     staff_user.username = new_username
+                    staff_user.name = name
+                    staff_user.phone = phone
+                    staff_user.email = email
+                    staff_user.gender = gender
                     if new_password:
                         staff_user.set_password(new_password)
                     db.session.commit()
@@ -206,17 +277,21 @@ def manage_staff():
                 flash('Please specify a target department', 'danger')
             else:
                 try:
-                    import openpyxl
                     wb = openpyxl.load_workbook(file)
                     ws = wb.active
                     added_count = 0
                     error_rows = []
                     
+                    # Columns: Username, Password, Name, Phone, Email, Gender
                     for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
                         if not row or all(cell is None for cell in row): continue
                         
                         username = str(row[0]).strip() if len(row) > 0 and row[0] is not None else ''
                         password = str(row[1]).strip() if len(row) > 1 and row[1] is not None else ''
+                        name = str(row[2]).strip() if len(row) > 2 and row[2] is not None else ''
+                        phone = str(row[3]).strip() if len(row) > 3 and row[3] is not None else ''
+                        email = str(row[4]).strip() if len(row) > 4 and row[4] is not None else ''
+                        gender = str(row[5]).strip() if len(row) > 5 and row[5] is not None else ''
                         
                         if not username or not password:
                             error_rows.append(f'Row {row_num}: Missing Username or Password')
@@ -226,7 +301,8 @@ def manage_staff():
                             error_rows.append(f'Row {row_num}: Username "{username}" already exists')
                             continue
                             
-                        staff = User(username=username, role='staff', department=target_dept)
+                        staff = User(username=username, role='staff', department=target_dept,
+                                     name=name, phone=phone, email=email, gender=gender)
                         staff.set_password(password)
                         db.session.add(staff)
                         added_count += 1
@@ -243,13 +319,14 @@ def manage_staff():
 
     query = User.query.filter_by(role='staff')
     if current_user.role == 'hod':
-        # Filter staff who belong to HOD's department OR have allocations in it
         from models import StaffAllocation
         staff_ids = db.session.query(StaffAllocation.staff_id).filter_by(department=current_user.department).distinct()
         query = query.filter((User.department == current_user.department) | (User.id.in_(staff_ids)))
 
     staff_members = query.all()
-    return render_template('manage_staff.html', staff_members=staff_members)
+    departments = [d[0] for d in db.session.query(Student.department).distinct().all() if d[0]]
+    if not departments: departments = ['CSE', 'IT', 'ECE', 'MECH']
+    return render_template('manage_staff.html', staff_members=staff_members, departments=departments)
 
 @app.route('/manage_allocations/<int:staff_id>', methods=['GET', 'POST'])
 @login_required

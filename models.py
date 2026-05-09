@@ -13,6 +13,10 @@ class User(db.Model, UserMixin):
     role = db.Column(db.String(20), nullable=False) # 'principal', 'hod', 'staff', 'student'
     department = db.Column(db.String(80), nullable=True) 
     year = db.Column(db.Integer, nullable=True) 
+    name = db.Column(db.String(120), nullable=True)
+    phone = db.Column(db.String(20), nullable=True)
+    email = db.Column(db.String(120), nullable=True)
+    gender = db.Column(db.String(20), nullable=True)
     
     # Optional linked student if role is 'student'
     student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=True)
