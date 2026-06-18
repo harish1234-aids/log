@@ -43,6 +43,20 @@ login_manager = LoginManager()
 login_manager.login_view = 'login'
 login_manager.init_app(app)
 
+with app.app_context():
+    try:
+        db.create_all()
+        # Initialize principal admin dynamically safely
+        principal = User.query.filter_by(role='principal').first()
+        if not principal:
+            principal = User(username='principal', role='principal')
+            principal.set_password('principal123')
+            db.session.add(principal)
+            db.session.commit()
+    except Exception as e:
+        print(f"Database initialization deferred or failed: {e}")
+
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -1748,13 +1762,4 @@ def api_analytics():
     return jsonify(data)
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-        # Initialize principal admin dynamically safely
-        principal = User.query.filter_by(role='principal').first()
-        if not principal:
-            principal = User(username='principal', role='principal')
-            principal.set_password('principal123')
-            db.session.add(principal)
-            db.session.commit()
     app.run(debug=True, port=5000)
